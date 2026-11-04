@@ -1,0 +1,9 @@
+# Toolchain for Rokit (https://github.com/rojo-rbx/rokit). On your computer, in this folder:
+#   rokit install      (downloads these exact versions; approve each tool when asked)
+# Cloud sessions use tools/install-tools.sh (cargo) instead; keep the two in sync.
+
+[tools]
+rojo = "rojo-rbx/rojo@7.7.1"
+lune = "lune-org/lune@0.11.1"
+stylua = "JohnnyMorganz/StyLua@2.6.0"
+selene = "Kampfkarren/selene@0.31.0"

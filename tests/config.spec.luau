@@ -26,8 +26,7 @@ return function(t)
 		BELT_CAP = Config.beltCap,
 		BELT_SECONDS = Config.beltSeconds,
 		PRESTIGE_MULT = Config.prestigeMult,
-		PRESTIGE_PRICE_BASE = Config.prestigePriceBase,
-		PRESTIGE_PRICE_MULT = Config.prestigePriceMult,
+		PRESTIGE_PRICE_TAIL = Config.prestigePriceTail,
 		PRESTIGE_TIER_BASE = Config.prestigeTierBase,
 	}
 
@@ -37,6 +36,15 @@ return function(t)
 				t.eq(knob(name), value, name)
 			end
 			t.eq(knob("WALL_SLOTS"), Config.wallColumns * Config.wallRows, "WALL_SLOTS")
+		end,
+		["econ_sim.py prestige prices match"] = function()
+			local block = py:match("PRESTIGE_PRICES = (%b[])")
+			local i = 0
+			for raw in block:gmatch("([%d%.e]+),") do
+				i += 1
+				t.eq(tonumber(raw), Config.prestigePrices[i], "prestige price " .. i)
+			end
+			t.eq(i, #Config.prestigePrices)
 		end,
 		["econ_sim.py variants match"] = function()
 			local block = py:match("VARIANTS = (%b[])")

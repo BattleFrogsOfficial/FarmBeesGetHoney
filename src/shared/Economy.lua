@@ -45,7 +45,12 @@ function Economy.prestigeTier(prestige: number): number
 end
 
 function Economy.prestigePrice(prestige: number): number
-	return Config.prestigePriceBase * Config.prestigePriceMult ^ prestige
+	local prices = Config.prestigePrices
+	local n = prestige + 1
+	if n <= #prices then
+		return prices[n]
+	end
+	return prices[#prices] * Config.prestigePriceTail ^ (n - #prices)
 end
 
 function Economy.canPrestige(prestige: number, highestTier: number, money: number): boolean

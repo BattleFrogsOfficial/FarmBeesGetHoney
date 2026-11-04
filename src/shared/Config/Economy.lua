@@ -21,7 +21,7 @@ return {
 	-- Honey jars
 	jarInterval = 8, -- seconds between jars, every tier
 	honeyBase = 5, -- honey per jar = honeyBase ^ (tier - 1)
-	beltCap = 35, -- live jars per plot
+	beltCap = 50, -- live jars per plot (35 in the first draft; 50 since 2026-11-04)
 	beltSeconds = 6, -- belt travel time, end to end
 	-- One variant at most per jar, rolled at creation (rarest checked first). chance is 0..1.
 	variants = {
@@ -39,7 +39,31 @@ return {
 
 	-- Prestige
 	prestigeMult = 1.5, -- per prestige, stacking
-	prestigePriceBase = 10_000, -- first prestige
-	prestigePriceMult = 10, -- each next prestige
+	-- Price of each prestige (index 1 = P1). Tuned with tools/econ_sim.py so each run takes ~10% longer
+	-- than the one before, starting at ~20 min (2026-11-04). P1-P7 climb ~13x each because the required
+	-- tier still rises; from P8 the tier is capped at 12, so the price only has to outpace the x1.5 bonus.
+	prestigePrices = {
+		10e3, -- P1
+		220e3, -- P2
+		4.1e6, -- P3
+		65e6, -- P4
+		860e6, -- P5
+		8.2e9, -- P6
+		73e9, -- P7
+		170e9, -- P8
+		330e9, -- P9
+		640e9, -- P10
+		1.0e12, -- P11
+		1.7e12, -- P12
+		3.1e12, -- P13
+		5.0e12, -- P14
+		8.5e12, -- P15
+		14e12, -- P16
+		24e12, -- P17
+		39e12, -- P18
+		63e12, -- P19
+		100e12, -- P20
+	},
+	prestigePriceTail = 1.65, -- after the table, each prestige costs this x the previous (x1.5 bonus x ~1.1 time)
 	prestigeTierBase = 5, -- required tier = base + prestige number (1st = 6), capped at maxTier
 }

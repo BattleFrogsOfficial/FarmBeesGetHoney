@@ -6,11 +6,12 @@ A greedy bot plays the core loop second by second:
   - merges every MERGE_EVERY seconds,
   - upgrades the processor when the upgrade pays back in under PAYBACK seconds,
   - walks the loop (pickup pad -> beekeeper) every WALK_EVERY seconds,
-  - once the next prestige's tier is reached, stops spending and saves for the price.
+  - once the next prestige's tier is reached, stops buying bees and saves for the price, still buying a
+    processor level whenever that gets it to the price sooner.
 
 Every knob mirrors src/shared/Config/Economy.lua: change both together.
 
-  python3 tools/econ_sim.py                 # prestige run report (P1..P10)
+  python3 tools/econ_sim.py                 # prestige run report (P1..P20; target ~20 min, then +10% each)
   python3 tools/econ_sim.py --tiers         # first run without prestiging: minutes to each tier
   python3 tools/econ_sim.py --prestiges 15 --random --seed 3
 """
@@ -32,11 +33,15 @@ HONEY_BASE = 5  # honey per jar = HONEY_BASE ** (tier - 1)
 PROCESSOR_RATE_BASE = 2.5  # honey/s at level L = base ** (L - 1)
 PROCESSOR_COST_BASE = 100
 PROCESSOR_COST_MULT = 3
-BELT_CAP = 35
+BELT_CAP = 50
 BELT_SECONDS = 6.0
 PRESTIGE_MULT = 1.5
-PRESTIGE_PRICE_BASE = 10_000
-PRESTIGE_PRICE_MULT = 10
+PRESTIGE_PRICES = [
+    10e3, 220e3, 4.1e6, 65e6, 860e6, 8.2e9, 73e9,
+    170e9, 330e9, 640e9, 1.0e12, 1.7e12, 3.1e12, 5.0e12,
+    8.5e12, 14e12, 24e12, 39e12, 63e12, 100e12,
+]
+PRESTIGE_PRICE_TAIL = 1.65
 PRESTIGE_TIER_BASE = 5
 # variant: (chance, multiplier)
 VARIANTS = [(0.02, 2), (0.005, 5), (0.0005, 20), (0.00005, 100)]
@@ -77,7 +82,10 @@ def prestige_tier(prestige):
 
 
 def prestige_price(prestige):
-    return PRESTIGE_PRICE_BASE * PRESTIGE_PRICE_MULT ** prestige
+    n = prestige + 1
+    if n <= len(PRESTIGE_PRICES):
+        return PRESTIGE_PRICES[n - 1]
+    return PRESTIGE_PRICES[-1] * PRESTIGE_PRICE_TAIL ** (n - len(PRESTIGE_PRICES))
 
 
 def expected_variant_mult(luck=1.0):
@@ -183,6 +191,22 @@ class Run:
         self.level += 1
         return True
 
+    def income(self, level):
+        return min(self.supply_rate(), processor_rate(level)) * self.mult
+
+    def upgrade_while_saving(self, price):
+        """Saving for the prestige: buy a processor level when it gets there sooner."""
+        cost = upgrade_cost(self.level)
+        if self.money < cost:
+            return
+        now, after = self.income(self.level), self.income(self.level + 1)
+        if now <= 0 or after <= now:
+            return
+        left = price - self.money
+        if (left + cost) / after < left / now:
+            self.money -= cost
+            self.level += 1
+
     def try_buy(self):
         free = WALL_SLOTS - self.hives()
         st = shop_tier(self.highest)
@@ -216,6 +240,7 @@ class Run:
             if saving:
                 if self.money >= price:
                     return t
+                self.upgrade_while_saving(price)
                 continue
             if not self.try_upgrade():
                 # One pad press per second; if the wall is full, merge now.
@@ -231,8 +256,8 @@ def fmt_min(s):
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--tiers", action="store_true", help="first run, no prestige: minutes to each tier")
-    ap.add_argument("--prestiges", type=int, default=10)
-    ap.add_argument("--hours", type=float, default=6, help="time limit per run")
+    ap.add_argument("--prestiges", type=int, default=20)
+    ap.add_argument("--hours", type=float, default=12, help="time limit per run")
     ap.add_argument("--random", action="store_true", help="roll jars and variants instead of expected values")
     ap.add_argument("--seed", type=int, default=1)
     ap.add_argument("--money2x", action="store_true", help="owns the 2x Money pass")
@@ -249,16 +274,19 @@ def main():
         print("Minutes " + " ".join(f"{fmt_min(run.first_tier.get(t)):>4}" for t in range(2, MAX_TIER + 1)))
         return
 
-    print("Prestige  needs  price          minutes  processor  money mult")
+    print("Prestige  needs  price                 minutes  vs prev  processor  money mult")
     total = 0
+    prev = None
     for p in range(args.prestiges):
         run = Run(p, rng, extra)
         s = run.play(limit)
         if s is None:
-            print(f"P{p + 1:<8} T{prestige_tier(p):<5} ${prestige_price(p):<13,} not reached in {args.hours} h")
+            print(f"P{p + 1:<8} T{prestige_tier(p):<5} ${prestige_price(p):<20,.0f} not reached in {args.hours} h")
             break
         total += s
-        print(f"P{p + 1:<8} T{prestige_tier(p):<5} ${prestige_price(p):<13,} {s / 60:>7.1f}  L{run.level:<9} x{run.mult:,.1f}")
+        ratio = f"x{s / prev:.2f}" if prev else "-"
+        prev = s
+        print(f"P{p + 1:<8} T{prestige_tier(p):<5} ${prestige_price(p):<20,.0f} {s / 60:>7.1f}  {ratio:<7}  L{run.level:<9} x{run.mult:,.1f}")
     print(f"Total: {total / 60:.0f} min")
 
 

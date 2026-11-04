@@ -10,7 +10,7 @@ local RateLimiter = require(script.Parent.RateLimiter)
 
 local Net = {}
 
-local getData: (Player) -> any = function()
+local getData: (Player) -> any = function(_player: Player)
 	return nil
 end
 

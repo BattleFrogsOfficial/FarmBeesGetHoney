@@ -39,6 +39,7 @@ src/client/          StarterPlayerScripts.Client
   Main.client.lua    loads controllers the same way
   Controllers/       StateController (latest snapshot + Changed signal)
 Packages/            vendored ProfileStore 1.0.3
+rokit.toml           tool versions for the owner's computer
 tools/               econ_sim.py (economy simulator), check / test / harness (Lune), install-tools.sh
 tests/               *.spec.luau
 docs/DESIGN.md       the design doc     docs/HANDOFF.md   latest session handoff
@@ -60,15 +61,17 @@ Template in `DataService.lua`, exactly the design doc's profile: `version money 
 | Wall | 10 x 10 = 100 slots, fill bottom row left→right then up |
 | Jars | every 8 s per hive, honey 5^(tier − 1) x variant |
 | Variants | Shiny 2% x2, Golden 0.5% x5, Rainbow 0.05% x20, Quantum 0.005% x100; one per jar, rarest checked first; Lucky Jars x3 odds |
-| Belt | cap 35 live jars, 6 s end to end |
+| Belt | cap 50 live jars per plot, 6 s end to end |
 | Processor | 2.5^(L − 1) honey/s at $1 per honey x prestige mult x pass mult; upgrade L→L+1 $100 x 3^(L − 1) |
-| Prestige | needs Tier min(12, 5 + n) where n = the prestige being bought (P1 = Tier 6); price $10K x 10^(n − 1); x1.5 per prestige, stacking |
+| Prestige | needs Tier min(12, 5 + n) where n = the prestige being bought (P1 = Tier 6); price from `prestigePrices` (P1–P20: $10K, $220K, $4.1M, $65M, $860M, $8.2B, $73B, $170B, $330B, $640B, $1T, $1.7T, $3.1T, $5T, $8.5T, $14T, $24T, $39T, $63T, $100T), then x`prestigePriceTail` 1.65 each; x1.5 per prestige, stacking |
 
-Sim (`python3 tools/econ_sim.py`, 2026-11-04, greedy bot as described in the doc; deterministic expected-value jars, `--random` agrees within a minute): P1 19.9 min, P2–P7 19–21 min each, **P8 52 min, P9 121 min, P10 not within 6 h**. First run without prestige (`--tiers`), minutes to first create Tier 2..12: 0 / 3 / 5 / 11 / 19 / 30 / 38 / 57 / 70 / 86 / 89. Both differ from the design doc's figures: open decision in `docs/HANDOFF.md`.
+**Pacing target: P1 ≈ 20 min, each prestige ≈ 10% longer than the one before.** The price table is solved for it in the sim; to retune one run change its price, to change the slope re-solve the table (bisect each price for its target time, round to 2 significant figures).
+
+Sim (`python3 tools/econ_sim.py --prestiges 30`, 2026-11-04, deterministic expected-value jars): 19.9 / 22.0 / 24.2 / 26.6 / 29.2 / 32.1 / 35.5 (P7) / 38.5 / 42.8 / 47.4 (P10) ... 75.6 (P15) ... 118 (P20) ... 301 (P30) min; every step x1.06–1.14, x1.10 from P21 on. `--random` adds a few minutes of noise per run (lucky variant jars), same trend. `--money2x` halves every run (P1 10 min, P20 60 min). First run without prestige (`--tiers`), minutes to first create Tier 2..12: 0 / 3 / 5 / 11 / 19 / 30 / 38 / 57 / 70 / 86 / 89. The bot plays perfectly; real players are likely ~1.3–1.6x slower.
 
 ## Commands
 
-Tools: lune 0.11.1, rojo 7.7.1, stylua 2.6.0, selene 0.31.0, installed by `bash tools/install-tools.sh` (cargo, pinned; several minutes). Python 3 standard library for the sim.
+Tools: lune 0.11.1, rojo 7.7.1, stylua 2.6.0, selene 0.31.0, pinned twice: `rokit.toml` (the owner's computer: `rokit install`) and `tools/install-tools.sh` (cloud sessions, cargo; several minutes). Keep the two in sync. Python 3 standard library for the sim.
 
 ```
 lune run tools/check                      # every .lua/.luau compiles
@@ -79,9 +82,9 @@ selene src                                # lint (needs `selene generate-roblox-
 rojo build default.project.json -o build/FarmBeesGetHoney.rbxl
 ```
 
-CI (`.github/workflows/ci.yml`) runs check, test, stylua --check, selene, the sim and a rojo build on every push and PR.
+CI (`.github/workflows/ci.yml`): job `check` (cargo tools) runs check, test, stylua --check, selene, the sim and a rojo build; job `rokit-build` installs from `rokit.toml`, runs the tests and uploads the built place as the `FarmBeesGetHoney-place` artifact. The owner works from a clone on their Desktop (`git pull`, `rojo serve`): push finished work to `main` (or merge its PR) so a pull picks it up.
 
 ## Status by milestone
 
-- **M1 Scaffold (2026-11-04): done.** Rojo project, install script, CI, Lune test harness, `tools/econ_sim.py`, ProfileStore + DataService, Config holding every knob, shared Economy / Merge / Wall with tests. Nothing in the world yet; not playtested in Studio (there is nothing to see).
+- **M1 Scaffold (2026-11-04): done.** Follow-up the same day: prestige price table (+10% per run), belt cap 50, `rokit.toml`, lint fix. Rojo project, install script, CI, Lune test harness, `tools/econ_sim.py`, ProfileStore + DataService, Config holding every knob, shared Economy / Merge / Wall with tests. Nothing in the world yet; not playtested in Studio (there is nothing to see).
 - M2 One plot · M3 Honey · M4 Six plots, prestige, passes, HUD · M5 Bee models + jar looks: not started.

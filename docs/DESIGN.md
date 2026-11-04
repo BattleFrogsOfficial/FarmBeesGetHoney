@@ -21,7 +21,7 @@ One full cycle of play, in the order the player experiences it:
 
 1. Step on a Buy pad (Buy 1 / Buy 5 / Buy 25). Each bee bought is the current shop tier and costs slightly more than the last. A hive box drops from above into the next free slot of the hive wall, bee inside.
 2. Press E near the hive wall to merge. Every group of three same-tier hives collapses into one hive of the next tier, repeatedly, until nothing more can merge. The wall is then rebuilt from the bottom-left.
-3. Each hive drops a jar of honey onto the conveyor every 8 seconds (Tier 1) with physics; the belt carries jars to its end. Jars that reach the end despawn and add their honey to a counter on the pickup pad. Max 35 live jars per plot.
+3. Each hive drops a jar of honey onto the conveyor every 8 seconds (Tier 1) with physics; the belt carries jars to its end. Jars that reach the end despawn and add their honey to a counter on the pickup pad. Max 50 live jars per plot.
 4. Walk onto the pickup pad to collect all counted honey (or own Auto Collect).
 5. Walk to the beekeeper stand and hand in honey. It goes into the processor queue, which converts a fixed amount of honey per second into money.
 6. Spend money on more bees and processor levels; repeat.
@@ -85,7 +85,7 @@ Every hive drops one jar every 8 seconds onto the conveyor behind the wall; the 
 - Honey amount = the hive tier's honey per jar (table above) x the variant multiplier.
 - Variants roll per jar at creation: Shiny 2% (x2), Golden 0.5% (x5), Rainbow 0.05% (x20), Quantum 0.005% (x100). One variant max per jar. Lucky Jars (gamepass) triples these odds.
 - Jar visuals step by tier: plain glass (1 to 3), fuller jar with a tag (4 to 6), gold lid (7 to 9), gem-studded lid and a glow (10 to 12). Variants add a tint and a particle: silver sparkle, gold shimmer, rainbow trail, purple static.
-- Belt: around 6 seconds end to end, moved by a velocity surface rather than per-jar scripting. Cap of 35 live jars per plot; a hive whose jar would exceed the cap holds it until a jar leaves the belt.
+- Belt: around 6 seconds end to end, moved by a velocity surface rather than per-jar scripting. Cap of 50 live jars per plot (35 until 2026-11-04); a hive whose jar would exceed the cap holds it until a jar leaves the belt.
 - Jars that reach the end despawn and add their honey to the pickup pad's counter ("Honey: 12,450 — walk here"). Stepping on the pad collects it all. Auto Collect (gamepass) collects continuously.
 
 The belt cap means a wall of 100 low-tier hives throttles itself, which quietly pushes the player toward merging. That is intended.
@@ -107,18 +107,18 @@ Tuning note: processor throughput grows 2.5x per level but costs 3x, so each upg
 Prestige is the long-term progression: each one multiplies all money earned by 1.5x permanently (stacking: P5 = 7.6x, P10 = 58x) and resets the run.
 
 - Unlock: you must have created a bee of the required tier this run. Required tier = 5 + prestige number, capped at 12 (P1 needs Tier 6, P2 Tier 7, P7 and beyond Tier 12).
-- Price: $10,000 for the first prestige, x10 each time after ($100,000, $1M, $10M ...). The price pad shows both the requirement and the price; it activates only when both are met.
+- Price: from a table, $10,000 for the first prestige, then $220K, $4.1M, $65M, $860M, $8.2B, $73B (P7) and on to $100T at P20; after P20 each prestige costs 1.65x the one before (full table in `src/shared/Config/Economy.lua`). The price pad shows both the requirement and the price; it activates only when both are met.
 - Resets: money (back to $12), all hives, processor level (to 1), shop tier (to 1), bees-bought counter, jar counter.
 - Keeps: prestige count and multiplier, gamepasses, lifetime stats.
 - Flag: one flagpole beside the plot entrance with a flat-color flag reading "P3" (the number). Flag color steps every 5 prestiges: white, green, blue, purple, gold, then red for 25+.
 
-Simulated run lengths with the tuned numbers below, assuming an attentive player: P1 25 min, P2 to P4 about 23 min each, P5 to P7 17 to 22 min, and from P8 on the Tier 12 runs shorten toward 5 to 8 minutes, at which point the x10 price is what sets the pace. If late runs feel too short, raise the price multiplier before touching anything else.
+**Pacing target (2026-11-04, replaces the first draft's):** P1 takes about 20 minutes and every prestige after takes about 10% longer than the one before: P2 22 min, P5 29, P10 47, P15 76, P20 about 2 hours, P30 about 5 hours (attentive player, no passes). Later prestiges must never get quicker.
 
-> **2026-11-04, scaffold note:** `tools/econ_sim.py` as checked in does not reproduce these run lengths. With the same knobs it gives P1 at ~20 min, P2–P7 at 19–21 min each, then P8 ~53 min, P9 ~121 min and P10 not reached in 6 h: late runs get *longer*, because the price grows x10 per prestige while the multiplier grows x1.5 and income stops growing once Tier 12 is the cap. The first-run tier times also differ (see below). Open decision in `docs/HANDOFF.md`; the knobs are unchanged.
+Why it is a table: up to P7 each prestige also asks for a new tier, so the price climbs about 13x a step; from P8 the tier is capped at 12, income stops growing except through the x1.5 bonus, and the price only needs about 1.5 x 1.1 = 1.65x a step. One formula can't do both without bumps, so each price was solved in the simulator for its target time and rounded. The first draft's x10 per prestige made P8 take 52 min, P9 2 h and P10 never finish. To retune a single run, change its price; to change the whole slope, re-solve the table.
 
 ## Economy numbers
 
-These values come from a simulation of a greedy player (buys the biggest pad it can afford, merges every 15 s, upgrades the processor when it pays back in under 10 min, walks the loop every 15 s). The first prestige lands at 25 minutes, which was the target.
+These values come from a simulation of a greedy player (buys the biggest pad it can afford, merges every 15 s, upgrades the processor when it pays back in under 10 min, walks the loop every 15 s; once the prestige tier is reached it stops buying bees and saves, still buying a processor level when that gets it there sooner). The first prestige lands at about 20 minutes, the target.
 
 | Knob | Value |
 |---|---|
@@ -132,9 +132,9 @@ These values come from a simulation of a greedy player (buys the biggest pad it 
 | Money per honey | $1 x prestige multiplier |
 | Processor rate at level L | 2.5^(L − 1) honey/s |
 | Processor upgrade cost L → L+1 | $100 x 3^(L − 1) |
-| Belt cap / travel time | 35 jars / 6 s |
+| Belt cap / travel time | 50 jars / 6 s |
 | Prestige multiplier | x1.5 per prestige, stacking |
-| Prestige price | $10,000 x 10^(prestige − 1) |
+| Prestige price | table: $10K, $220K, $4.1M ... $100T (P20), then x1.65 each |
 | Prestige requirement | Tier 5 + prestige number, max 12 |
 
 First run (no multipliers), time to first create each tier:
@@ -143,7 +143,7 @@ First run (no multipliers), time to first create each tier:
 |---|---|---|---|---|---|---|---|---|---|---|
 | Minutes | 1 | 2 | 9 | 25 | 37 | 51 | 51 | 53 | 64 | 119 |
 
-> **2026-11-04:** the checked-in sim gives 1 / 3 / 11 / 19 / 30 / 38 / 57 / 70 / 86 / 89 for the same tiers.
+> **2026-11-04:** the first-draft table above was wrong; the checked-in sim gives 0 / 3 / 5 / 11 / 19 / 30 / 38 / 57 / 70 / 86 / 89 for Tier 2 to 12 (Tier 4 included).
 
 The simulation script lives in the repo as `tools/econ_sim.py`; rerun it after any change to a knob above. Every number here is a starting point: watch real players' time-to-first-prestige after launch and retune.
 

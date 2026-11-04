@@ -1,10 +1,11 @@
 #!/usr/bin/env bash
-# Installs the command-line tools this repo needs (pinned to the versions it was built and checked
+# Cloud sessions / CI: installs the command-line tools this repo needs (pinned to the versions it was built and checked
 # with) from crates.io via cargo. Safe to re-run: cargo skips tools already at the right version. Use it as (or from) a cloud environment setup script.
 #   lune 0.11.1   tests and the compile check
 #   rojo 7.7.1    builds the place file
 #   stylua 2.6.0  formatting
 #   selene 0.31.0 linting (needs `selene generate-roblox-std` once, with internet)
+# On your own computer use Rokit instead (rokit.toml, same versions): rokit install
 set -euo pipefail
 
 if ! command -v cargo >/dev/null 2>&1; then

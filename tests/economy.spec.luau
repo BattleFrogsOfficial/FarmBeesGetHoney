@@ -33,13 +33,19 @@ return function(t)
 			t.eq(Economy.upgradeCost(2), 300)
 			t.eq(Economy.upgradeCost(4), 2700)
 		end,
-		["prestige: tier 5 + n capped at 12, price $10K x10"] = function()
+		["prestige: tier 5 + n capped at 12, price table then x1.65"] = function()
 			t.eq(Economy.prestigeTier(0), 6)
 			t.eq(Economy.prestigeTier(1), 7)
 			t.eq(Economy.prestigeTier(6), 12)
 			t.eq(Economy.prestigeTier(20), 12)
 			t.eq(Economy.prestigePrice(0), 10_000)
-			t.eq(Economy.prestigePrice(2), 1_000_000)
+			t.eq(Economy.prestigePrice(2), 4.1e6)
+			t.eq(Economy.prestigePrice(19), 100e12) -- P20, the table's last
+			t.near(Economy.prestigePrice(20), 100e12 * 1.65, 1) -- P21: the tail
+			t.near(Economy.prestigePrice(21), 100e12 * 1.65 ^ 2, 1)
+			for p = 1, 30 do
+				t.ok(Economy.prestigePrice(p) > Economy.prestigePrice(p - 1), "prices rise at P" .. p + 1)
+			end
 			t.ok(Economy.canPrestige(0, 6, 10_000))
 			t.ok(not Economy.canPrestige(0, 5, 1e9))
 			t.ok(not Economy.canPrestige(0, 6, 9_999))
