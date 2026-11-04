@@ -1,0 +1,47 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Cache cargo tools
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/bin
+            ~/.cargo/registry
+          key: tools-${{ runner.os }}-${{ hashFiles('tools/install-tools.sh') }}
+
+      - name: Install tools
+        run: bash tools/install-tools.sh
+
+      - name: Compile check
+        run: lune run tools/check
+
+      - name: Tests
+        run: lune run tools/test
+
+      - name: Format
+        run: stylua --check src tools tests
+
+      - name: Lint
+        run: |
+          selene generate-roblox-std
+          selene src
+
+      - name: Economy sim
+        run: |
+          python3 tools/econ_sim.py
+          python3 tools/econ_sim.py --tiers
+
+      - name: Build place
+        run: |
+          mkdir -p build
+          rojo build default.project.json -o build/FarmBeesGetHoney.rbxl
