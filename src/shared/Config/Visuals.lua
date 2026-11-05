@@ -6,7 +6,7 @@ return {
 	hub = Color3.fromRGB(196, 186, 160),
 	bridge = Color3.fromRGB(150, 110, 70),
 	rail = Color3.fromRGB(110, 80, 50),
-	backboard = Color3.fromRGB(120, 86, 52),
+	platform = Color3.fromRGB(150, 140, 125),
 	belt = Color3.fromRGB(45, 45, 50),
 	beltRail = Color3.fromRGB(90, 90, 96),
 

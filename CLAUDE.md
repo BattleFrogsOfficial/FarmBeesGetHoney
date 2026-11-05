@@ -38,7 +38,7 @@ src/shared/          ReplicatedStorage.Shared — pure modules, usable on both s
   Perks.lua          pass effects: moneyPerHoney, luck, jarInterval
   Wall.lua           10x10 slot layout (slot 1 bottom-left), free slots, room for a pad
   BeeModel.lua       builds any tier's bee from parts (Config/BeeStyle), < 20 parts, welds to a hive
-  HiveModel.lua      hive box (tier color, number) + its bee
+  HiveModel.lua      five-sided hive box, open front toward the belt (tier color, number) + its bee inside
   JarModel.lua       jar (physics cylinder + lid, tag/gem by tier band, variant tint + particles)
   Format.lua Remotes.lua Types.lua Signal.lua
 src/server/          ServerScriptService.Server
@@ -68,8 +68,9 @@ docs/DESIGN.md       the design doc     docs/HANDOFF.md   latest session handoff
 
 - **Map** (`World.build`, from `PlotService.Init`): the hub (spawn, pass-shop board, top-honey board) at the origin, 6 plots on a ring of radius 150 joined by bridges. Each plot is 120 x 120; plot-local +z points to the hub. A new Baseplate place's `Baseplate` / `SpawnLocation` are deleted first.
 - **Plots** are claimed per session (first free), spawn puts you on yours facing the wall. Pads are step-on: `PlotService` checks every root part every 0.1 s; entering a pad calls its handler once; Buy pads repeat every `Game.buyRepeatSeconds` (0.5) while you stand there. Someone else's pad says "Not your plot".
-- **Buy** (`Shop.buy`): hive boxes drop in with a bounce + dust. **Merge** (`Merge.plan`): consumed hives fly to the merge point (0.4 s), flash, then every hive tweens to its new slot (0.55 s): about 1 s total, under `Game.mergeAnimationMax`. Buys, jars and prestige wait while it runs. A hive is one box (anchored, tweened) with its bee welded to it.
-- **Jars** (`HoneyService`, every 0.1 s): each hive has a timer (`HiveService.timers`); due hives drop a jar over belt A at their column unless 50 jars are live (`Belt.due`, longest-waiting first). The belt is two anchored parts with `AssemblyLinearVelocity` (14 studs/s): A behind the wall toward +x, B down the right side to the bin; a jar past `Layout.beltEndZ`, fallen off, or 30 s old is counted (pickup pad, or the queue with Auto Collect) and removed. Leaving counts the belt's jars into `padHoney`; prestige discards them.
+- **Hives** (owner, 2026-11-05): no wall. A free-standing 10x10 stack of five-sided boxes (back, top, bottom, left, right) sits on a low platform at the back of the plot, open fronts facing the conveyor, each bee living inside its box. Belt A runs along the front of the stack; jars appear on it right in front of their column.
+- **Buy** (`Shop.buy`): hive boxes drop in with a bounce + dust. **Merge** (`Merge.plan`): consumed hives fly to the merge point (0.4 s), flash, then every hive tweens to its new slot (0.55 s): about 1 s total, under `Game.mergeAnimationMax`. Buys, jars and prestige wait while it runs. A hive is an invisible anchored root (tweened) with its five panels and bee welded to it: 17–24 parts.
+- **Jars** (`HoneyService`, every 0.1 s): each hive has a timer (`HiveService.timers`); due hives drop a jar onto belt A in front of their column unless 50 jars are live (`Belt.due`, longest-waiting first). The belt is two anchored parts with `AssemblyLinearVelocity` (14 studs/s): A along the front of the hive stack toward +x, B down the right side to the bin; a jar past `Layout.beltEndZ`, fallen off, or 30 s old is counted (pickup pad, or the queue with Auto Collect) and removed. Leaving counts the belt's jars into `padHoney`; prestige discards them.
 - **Processor** (`ProcessorService`, every 0.25 s): `Processor.step` at the level's rate x `Perks.moneyPerHoney`. Sell pad hands in carried honey; Upgrade pad buys one level per step-on.
 - **Prestige** pad: `Prestige.apply` resets money ($12), hives, highest tier, shop buys, processor level, and all honey in the loop (pad, carried, queued, belt); flag shows "P<n>", color every 5 (`Visuals.flagColors`).
 - **Passes** (`MonetizationService`): checked with `UserOwnsGamePassAsync` on join (skipped in Studio unless `Game.studioPasses`) and on `PromptGamePassPurchaseFinished`; ownership in `DataService.passes` only. **Cash packs**: `ProcessReceipt` grants `Shop.cashPack` once per PurchaseId (`profile.receipts`, last 50) and saves before answering PurchaseGranted. Ids of 0 are skipped (Studio prints which).
@@ -115,7 +116,7 @@ lune run tools/preview/export -- build/FarmBeesGetHoney.rbxl build/scene.json &&
 (cd tools/preview && npm install)         # once, for the renderer (three.js); Chromium + Playwright are preinstalled in cloud sessions
 ```
 
-Preview cameras: `SHOTS='[["name",[eye],[target],fov]]'`. Plot 1 is centered at (150, 0, 0) with its wall toward +x, e.g. `["wall",[140,24,0],[195,20,0],60]`. The renderer draws SurfaceGui text over the whole face (the hive numbers are really small corner labels).
+Preview cameras: `SHOTS='[["name",[eye],[target],fov]]'`. Plot 1 is centered at (150, 0, 0) with its hive stack toward +x, e.g. `["front",[128,14,0],[199,10,0],60]` (what a player on the pads sees). The renderer draws SurfaceGui text over the whole face (the hive numbers are really small corner labels).
 
 CI (`.github/workflows/ci.yml`): job `check` (cargo tools) runs check, test, stylua --check, selene, the sim, a rojo build and the world smoke test; job `rokit-build` installs from `rokit.toml`, runs the tests and uploads the built place as the `FarmBeesGetHoney-place` artifact. The owner works from a clone on their Desktop (`git pull`, `rojo serve`): push finished work to `main` (or merge its PR) so a pull picks it up.
 

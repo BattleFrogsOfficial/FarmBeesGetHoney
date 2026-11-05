@@ -1,5 +1,7 @@
 # Handoff — 2026-11-05, the whole game (M2–M5) in one pass
 
+**Follow-up (owner):** no wall. Hives are open-front five-sided boxes stacked on a platform behind the conveyor, bees inside; jars appear on the belt in front of each column. Belt A's rails are 1.5 studs high so the bottom row shows.
+
 ## What changed
 
 Everything after the scaffold, built together at the owner's request with a bare-bones HUD:
@@ -18,7 +20,7 @@ Nothing has been played in Studio. Check, in order:
 1. Play solo: you spawn on a plot facing the wall; the map has 6 plots and a hub; no errors in Output.
 2. Buy 1 with the starting $12: a box drops into the bottom-left slot. Stand on Buy 1: it keeps buying every 0.5 s while affordable.
 3. Buy 3, press E at the wall: they fly together and a Tier 2 drops in (well under 1.5 s).
-4. Jars: drop behind the wall every 8 s per hive, ride belt A then down belt B, vanish at the end; the pickup sign counts up. **Watch the corner** where belt A meets B: if jars tip or pile up, lower `Layout.beltSpeed` or widen the rails.
+4. Jars: appear on the belt in front of each hive column every 8 s, ride belt A then down belt B, vanish at the end; the pickup sign counts up. **Watch the corner** where belt A meets B: if jars tip or pile up, lower `Layout.beltSpeed` or widen the rails.
 5. Pickup pad -> HUD "Honey carried"; sell pad -> processor queue readout and honey level; money rises at 1/s; Upgrade pad.
 6. Wide camera on a Buy pad, back to normal off it.
 7. Prestige (fastest test: temporarily lower `prestigePrices[1]` and set a Tier 6 hive in Studio's command bar, or play ~20 min): resets, flag shows P1.
