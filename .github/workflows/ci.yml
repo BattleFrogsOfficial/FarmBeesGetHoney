@@ -46,6 +46,9 @@ jobs:
           mkdir -p build
           rojo build default.project.json -o build/FarmBeesGetHoney.rbxl
 
+      - name: World smoke test
+        run: lune run tools/smoke -- build/FarmBeesGetHoney.rbxl
+
   # The same tools through Rokit (what you use on your own computer), then the place file Studio opens.
   rokit-build:
     runs-on: ubuntu-latest

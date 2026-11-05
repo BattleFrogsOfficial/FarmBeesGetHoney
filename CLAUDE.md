@@ -6,9 +6,10 @@ Merge-and-conveyor idle game for Roblox. Luau, synced into Studio with Rojo. One
 
 ## The one rule: the server is authoritative
 
-- Clients send **intents only** (`src/shared/Remotes.lua`): currently `Merge()`. Never a price, amount, tier or timestamp. Pads (Buy 1/5/25, pickup, sell, upgrade, prestige) are step-on and detected by the server, so they have no remote.
+- Clients send **intents only** (`src/shared/Remotes.lua`): only `Merge()` (the E prompt, which the client creates on your own wall). Never a price, amount, tier or timestamp. Pads (Buy 1/5/25, pickup, sell, upgrade, prestige) are step-on and detected by the server, so they have no remote.
 - Every remote goes through `Net.on` (`src/server/Util/Net.lua`): rate limit (`Game.remoteCallsPerSecond`), loaded profile required; handlers validate every argument (`Util/Validate.lua`) and reject silently.
-- The shared rule modules decide (`Economy`, `Merge`, `Wall`); the client only previews with them.
+- The shared rule modules decide (`Economy`, `Merge`, `Wall`, `Shop`, `Belt`, `Processor`, `Prestige`, `Perks`); services only wire them to the world. The client only previews.
+- **HUD/UI is bare-bones on purpose** (owner, 2026-11-05): plain frames and text built in `src/client/UI.lua` + the controllers, every size/color/position in `Config/Hud.lua`. World signs are SurfaceGuis built in `Util/World.lua`, colors in `Config/Visuals.lua`. Keep them easy to restyle; don't add polish yet.
 
 ## Conventions
 
@@ -24,30 +25,59 @@ Merge-and-conveyor idle game for Roblox. Luau, synced into Studio with Rojo. One
 
 ```
 src/shared/          ReplicatedStorage.Shared — pure modules, usable on both sides and in Lune
-  Config/            Economy (every economy knob) Bees (the 12 tiers) Game (server, saving, timings)
-                     Passes Products (ids 0 = not created in Creator Hub yet)
+  Config/            Economy (every economy knob) Bees (the 12 tiers) BeeStyle (each tier's look)
+                     Game (server, saving, timings) Layout (map + plot geometry) Visuals (world colors)
+                     Hud (HUD sizes/colors) Passes Products (ids 0 = not created in Creator Hub yet)
   Economy.lua        honeyPerJar, shopTier, beePrice, padCost, processorRate, upgradeCost,
                      prestigeTier/Price/Multiplier, canPrestige, moneyPerHoney, rollVariant
-  Merge.lua          the merge rule: run(hives) -> { hives, merges, created, highest }, canMerge
+  Merge.lua          run(hives), canMerge, plan(hives) -> result, moves (kept/new per slot), consumed
+  Shop.lua           quote/buy (Buy pads), noteTier (highest tier + shop-tier reset), cashPack
+  Belt.lua           due(timers, now, free): which hives drop a jar (cap holds the rest), stagger
+  Processor.lua      step (queue -> money), upgrade, handIn
+  Prestige.lua       status, apply (the reset), flagIndex
+  Perks.lua          pass effects: moneyPerHoney, luck, jarInterval
   Wall.lua           10x10 slot layout (slot 1 bottom-left), free slots, room for a pad
+  BeeModel.lua       builds any tier's bee from parts (Config/BeeStyle), < 20 parts, welds to a hive
+  HiveModel.lua      hive box (tier color, number) + its bee
+  JarModel.lua       jar (physics cylinder + lid, tag/gem by tier band, variant tint + particles)
   Format.lua Remotes.lua Types.lua Signal.lua
 src/server/          ServerScriptService.Server
   Main.server.lua    Init() all, then Start() all, in order
-  Services/          DataService (ProfileStore, snapshots)
-  Util/              Net RateLimiter Validate
+  Services/          DataService (ProfileStore, snapshots, saveNow) PlotService (map, plot claim, spawn,
+                     step-on pads, pad signs, flag) HiveService (Buy pads, merge + animation, Auto Merge,
+                     Auto Buy, jar timers) HoneyService (jars, belt, pickup pad, Auto Collect)
+                     ProcessorService (hand in, processing, upgrade pad, readout) PrestigeService
+                     MonetizationService (passes, cash packs) LeaderboardService (leaderstats, hub board)
+  Util/              World (builds hub, 6 plots, bridges, walls, belts, pads, stand, processor, flags)
+                     Net RateLimiter Validate
 src/client/          StarterPlayerScripts.Client
   Main.client.lua    loads controllers the same way
-  Controllers/       StateController (latest snapshot + Changed signal)
+  UI.lua             frame / text / button helpers (styling from Config/Hud)
+  Controllers/       StateController (snapshot) HudController (stats, toast, SHOP button)
+                     ShopController (pass + cash pack panel, hub board prompt)
+                     PlotController (E merge prompt, wall camera on Buy pads, beekeeper idles)
 Packages/            vendored ProfileStore 1.0.3
 rokit.toml           tool versions for the owner's computer
-tools/               econ_sim.py (economy simulator), check / test / harness (Lune), install-tools.sh
+tools/               econ_sim.py, check / test / harness / smoke (Lune), install-tools.sh
+  preview/           export.luau + render.mjs: screenshots of the real World / bee / jar code
 tests/               *.spec.luau
 docs/DESIGN.md       the design doc     docs/HANDOFF.md   latest session handoff
 ```
 
+## How the game runs (server)
+
+- **Map** (`World.build`, from `PlotService.Init`): the hub (spawn, pass-shop board, top-honey board) at the origin, 6 plots on a ring of radius 150 joined by bridges. Each plot is 120 x 120; plot-local +z points to the hub. A new Baseplate place's `Baseplate` / `SpawnLocation` are deleted first.
+- **Plots** are claimed per session (first free), spawn puts you on yours facing the wall. Pads are step-on: `PlotService` checks every root part every 0.1 s; entering a pad calls its handler once; Buy pads repeat every `Game.buyRepeatSeconds` (0.5) while you stand there. Someone else's pad says "Not your plot".
+- **Buy** (`Shop.buy`): hive boxes drop in with a bounce + dust. **Merge** (`Merge.plan`): consumed hives fly to the merge point (0.4 s), flash, then every hive tweens to its new slot (0.55 s): about 1 s total, under `Game.mergeAnimationMax`. Buys, jars and prestige wait while it runs. A hive is one box (anchored, tweened) with its bee welded to it.
+- **Jars** (`HoneyService`, every 0.1 s): each hive has a timer (`HiveService.timers`); due hives drop a jar over belt A at their column unless 50 jars are live (`Belt.due`, longest-waiting first). The belt is two anchored parts with `AssemblyLinearVelocity` (14 studs/s): A behind the wall toward +x, B down the right side to the bin; a jar past `Layout.beltEndZ`, fallen off, or 30 s old is counted (pickup pad, or the queue with Auto Collect) and removed. Leaving counts the belt's jars into `padHoney`; prestige discards them.
+- **Processor** (`ProcessorService`, every 0.25 s): `Processor.step` at the level's rate x `Perks.moneyPerHoney`. Sell pad hands in carried honey; Upgrade pad buys one level per step-on.
+- **Prestige** pad: `Prestige.apply` resets money ($12), hives, highest tier, shop buys, processor level, and all honey in the loop (pad, carried, queued, belt); flag shows "P<n>", color every 5 (`Visuals.flagColors`).
+- **Passes** (`MonetizationService`): checked with `UserOwnsGamePassAsync` on join (skipped in Studio unless `Game.studioPasses`) and on `PromptGamePassPurchaseFinished`; ownership in `DataService.passes` only. **Cash packs**: `ProcessReceipt` grants `Shop.cashPack` once per PurchaseId (`profile.receipts`, last 50) and saves before answering PurchaseGranted. Ids of 0 are skipped (Studio prints which).
+- **Leaderboard**: `leaderstats` Prestige + Honey (lifetime); the hub board reads OrderedDataStore `LifetimeHoney_v1` every 120 s (says it needs API access when it can't).
+
 ## Profile data (ProfileStore, store `PlayerData_v1`)
 
-Template in `DataService.lua`, exactly the design doc's profile: `version money prestige hives highestTier shopBuys processorLevel queuedHoney padHoney stats{lifetimeHoney lifetimeMoney jarsMade merges bestVariant}`. `hives` is a dense array of tiers in wall order (no holes). `profile:Reconcile()` fills missing fields on load, so new fields need no migration. Autosave every `Game.autoSaveSeconds` (60); ProfileStore flushes on leave and BindToClose. `DataService.onRelease(fn)` runs before the final save (milestone 3: count belt jars into `padHoney`). Pass ownership lives in `DataService.passes[player]` for the session only, never in the save. Studio without API access falls back to ProfileStore's mock store.
+Template in `DataService.lua`: the design doc's profile `version money prestige hives highestTier shopBuys processorLevel queuedHoney padHoney stats{lifetimeHoney lifetimeMoney jarsMade merges bestVariant}` plus `carriedHoney` (picked up, not handed in) and `receipts` (granted PurchaseIds), both added 2026-11-05. `hives` is a dense array of tiers in wall order (no holes). `profile:Reconcile()` fills missing fields on load, so new fields need no migration. Autosave every `Game.autoSaveSeconds` (60); ProfileStore flushes on leave and BindToClose. `DataService.onRelease(fn)` runs before the final save with the profile and passes still readable (HoneyService counts belt jars into `padHoney` there). Pass ownership lives in `DataService.passes[player]` for the session only, never in the save. Studio without API access falls back to ProfileStore's mock store.
 
 ## Economy (source of truth: `src/shared/Config/Economy.lua`)
 
@@ -80,11 +110,16 @@ python3 tools/econ_sim.py                 # prestige run lengths (--tiers, --pre
 stylua src tools tests                    # format
 selene src                                # lint (needs `selene generate-roblox-std` once, with internet)
 rojo build default.project.json -o build/FarmBeesGetHoney.rbxl
+lune run tools/smoke -- build/FarmBeesGetHoney.rbxl          # builds the world + every hive/bee/jar: part budgets, bees fit slots, pads, belt
+lune run tools/preview/export -- build/FarmBeesGetHoney.rbxl build/scene.json && node tools/preview/render.mjs build/scene.json build/shots
+(cd tools/preview && npm install)         # once, for the renderer (three.js); Chromium + Playwright are preinstalled in cloud sessions
 ```
 
-CI (`.github/workflows/ci.yml`): job `check` (cargo tools) runs check, test, stylua --check, selene, the sim and a rojo build; job `rokit-build` installs from `rokit.toml`, runs the tests and uploads the built place as the `FarmBeesGetHoney-place` artifact. The owner works from a clone on their Desktop (`git pull`, `rojo serve`): push finished work to `main` (or merge its PR) so a pull picks it up.
+Preview cameras: `SHOTS='[["name",[eye],[target],fov]]'`. Plot 1 is centered at (150, 0, 0) with its wall toward +x, e.g. `["wall",[140,24,0],[195,20,0],60]`. The renderer draws SurfaceGui text over the whole face (the hive numbers are really small corner labels).
+
+CI (`.github/workflows/ci.yml`): job `check` (cargo tools) runs check, test, stylua --check, selene, the sim, a rojo build and the world smoke test; job `rokit-build` installs from `rokit.toml`, runs the tests and uploads the built place as the `FarmBeesGetHoney-place` artifact. The owner works from a clone on their Desktop (`git pull`, `rojo serve`): push finished work to `main` (or merge its PR) so a pull picks it up.
 
 ## Status by milestone
 
-- **M1 Scaffold (2026-11-04): done.** Follow-up the same day: prestige price table (+10% per run), belt cap 50, `rokit.toml`, lint fix. Rojo project, install script, CI, Lune test harness, `tools/econ_sim.py`, ProfileStore + DataService, Config holding every knob, shared Economy / Merge / Wall with tests. Nothing in the world yet; not playtested in Studio (there is nothing to see).
-- M2 One plot · M3 Honey · M4 Six plots, prestige, passes, HUD · M5 Bee models + jar looks: not started.
+- **M1 Scaffold (2026-11-04): done.** Follow-up the same day: prestige price table (+10% per run), belt cap 50, `rokit.toml`, lint fix.
+- **M2–M5 (2026-11-05): built in one pass, not yet played in Studio.** One plot per player on a 6-plot map with hub and bridges; hive wall with Buy 1/5/25, drop-in, E merge with the fly-in/rebuild animation; jars with variants on a moving belt with the 50 cap; pickup pad, beekeeper (idle animations), processor + upgrade pad; prestige with flag; all six passes and three cash packs (ids still 0); leaderstats + top-honey board; bare-bones HUD and shop panel; the 12 bee models and the jar tier/variant looks. Checked headlessly (tests, smoke test, preview renders); the Studio list is in docs/HANDOFF.md.

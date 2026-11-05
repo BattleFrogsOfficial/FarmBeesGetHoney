@@ -14,10 +14,15 @@ if ! command -v cargo >/dev/null 2>&1; then
 fi
 export PATH="$HOME/.cargo/bin:$PATH"
 
-cargo install --locked lune --version 0.11.1
-cargo install --locked rojo --version 7.7.1
-cargo install --locked stylua --version 2.6.0 --features luau # without the feature it cannot parse Luau
-cargo install --locked selene --version 0.31.0
+# Skips a tool already at its pinned version (e.g. restored from a CI cache); --force replaces
+# any other version.
+need() { # <binary> <version>
+	! command -v "$1" >/dev/null 2>&1 || ! "$1" --version 2>/dev/null | grep -q "$2"
+}
+need lune 0.11.1 && cargo install --locked --force lune --version 0.11.1
+need rojo 7.7.1 && cargo install --locked --force rojo --version 7.7.1
+need stylua 2.6.0 && cargo install --locked --force stylua --version 2.6.0 --features luau # without the feature it cannot parse Luau
+need selene 0.31.0 && cargo install --locked --force selene --version 0.31.0
 
 lune --version && rojo --version && stylua --version && selene --version
 python3 --version # tools/econ_sim.py (standard library only)

@@ -9,6 +9,9 @@ Remotes.init()
 local Controllers = script.Parent.Controllers
 local order = {
 	require(Controllers.StateController),
+	require(Controllers.HudController),
+	require(Controllers.ShopController),
+	require(Controllers.PlotController),
 }
 
 for _, controller in order do
