@@ -1,23 +1,35 @@
-# Handoff — 2026-11-04, Milestone 1 (Scaffold) + pacing follow-up
+# Handoff — 2026-11-05, the whole game (M2–M5) in one pass
 
 ## What changed
 
-- Scaffold from the mutant-farm tooling: Rojo project, `tools/install-tools.sh` (cargo, cloud) and `rokit.toml` (owner's computer), Lune check/test, stylua/selene config, CI, vendored ProfileStore.
-- `Config/Economy.lua` holds every knob; shared `Economy` / `Merge` / `Wall` with tests; `DataService` on ProfileStore; `tools/econ_sim.py`.
-- **Prestige pacing (owner, 2026-11-04):** P1 ≈ 20 min, each prestige ≈ 10% longer. The first draft's x10 price made P8+ explode (P10 never finished), so the price is now a table solved in the sim for P1–P20 ($10K ... $100T), then x1.65 each. Sim: 19.9 / 22.0 / 24.2 / 26.6 / 29.2 / 32.1 / 35.5 ... 47 (P10) ... 118 (P20) ... 301 (P30) min.
-- Sim bot: while saving for the prestige it still buys a processor level when that reaches the price sooner (before, it froze its processor, which understated late income).
-- Belt cap 35 → 50 jars per plot (owner).
-- Lint fix in `Util/Net.lua` (the placeholder data getter now takes the player argument).
+Everything after the scaffold, built together at the owner's request with a bare-bones HUD:
 
-## Not tested
+- **Map** (`Util/World.lua`, geometry in `Config/Layout`, colors in `Config/Visuals`): hub with spawn, pass-shop board and top-honey board; 6 plots in a ring, bridges, rails. Each plot: 10x10 hive wall, two-segment conveyor with rails and a bin, Buy 1/5/25, pickup, sell, upgrade and prestige pads with signs, beekeeper stand + NPC, processor with a honey level and readout, flagpole, owner sign.
+- **Server services**: PlotService (claim, spawn on your plot, pad detection, pad signs, flag), HiveService (buy, merge + animation, Auto Merge, Auto Buy, jar timers), HoneyService (jars, cap, belt end, pickup, Auto Collect, leave/prestige handling), ProcessorService, PrestigeService, MonetizationService, LeaderboardService.
+- **Shared rules with tests**: Shop, Belt, Processor, Prestige, Perks, Merge.plan (39 tests).
+- **Looks**: `BeeModel` (12 tiers from `Config/BeeStyle`, 12–19 parts each), `HiveModel` (tier-colored box, Neon at 12), `JarModel` (4 tier bands, 4 variants with tint + particles).
+- **Client**: bare-bones HUD (stats panel, toast, SHOP button) and shop panel, E merge prompt on your wall, wide wall camera on Buy pads, beekeeper idle animations. All styling in `Config/Hud`.
+- **Tools**: `tools/smoke.luau` (world + models headless, in CI) and `tools/preview` (screenshots).
 
-- Nothing has run in Studio (no world until M2).
-- `rokit install` couldn't be tried in the cloud sandbox (GitHub downloads are blocked there); the CI job `rokit-build` exercises it.
+## Not tested (Studio list)
 
-## Settled (owner)
+Nothing has been played in Studio. Check, in order:
 
-- Sim P1 at ~20 min is fine. The bot saving for processor upgrades is the intended behaviour. Late prestiges get slightly longer, never quicker.
+1. Play solo: you spawn on a plot facing the wall; the map has 6 plots and a hub; no errors in Output.
+2. Buy 1 with the starting $12: a box drops into the bottom-left slot. Stand on Buy 1: it keeps buying every 0.5 s while affordable.
+3. Buy 3, press E at the wall: they fly together and a Tier 2 drops in (well under 1.5 s).
+4. Jars: drop behind the wall every 8 s per hive, ride belt A then down belt B, vanish at the end; the pickup sign counts up. **Watch the corner** where belt A meets B: if jars tip or pile up, lower `Layout.beltSpeed` or widen the rails.
+5. Pickup pad -> HUD "Honey carried"; sell pad -> processor queue readout and honey level; money rises at 1/s; Upgrade pad.
+6. Wide camera on a Buy pad, back to normal off it.
+7. Prestige (fastest test: temporarily lower `prestigePrices[1]` and set a Tier 6 hive in Studio's command bar, or play ~20 min): resets, flag shows P1.
+8. Two players (Studio Test > 2 players): second plot, "Not your plot" on the other's pads and wall.
+9. Leave and rejoin (needs API access): money, wall, honey kept; belt jars counted into the pickup pad.
 
-## Next (M2: one plot, no multiplayer)
+## Open decisions (owner)
 
-Plot builder (wall, Buy 1/5/25 pads in a row), a `PlotService` that detects pad steps server-side and spends through one money writer, hive drop-in tween, E prompt + `Merge` intent with the column-fall rebuild under `Game.mergeAnimationMax`, placeholder Tier 1–3 bees. Add a headless server harness for the services (mutant-farm's `tools/server-harness.luau` is the model). Work on a branch with a PR per milestone; merge to `main` so the owner's Desktop clone gets it with `git pull`.
+- Create the passes and cash packs in Creator Hub and put their ids in `Config/Passes.lua` / `Config/Products.lua` (the shop says "Not on sale yet" until then).
+- Sounds: none yet (the doc mentions a thud on drop).
+
+## Next
+
+Studio pass from the list above, then real play sessions for balance (the sim assumes a perfect player; real P1 likely 26–32 min).

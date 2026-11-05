@@ -19,6 +19,8 @@ export type Profile = {
 	processorLevel: number,
 	queuedHoney: number, -- honey waiting in the processor
 	padHoney: number, -- honey waiting on the pickup pad
+	carriedHoney: number, -- picked up, not yet handed to the beekeeper
+	receipts: { [string]: number }, -- developer product PurchaseIds already granted (-> unix time)
 	stats: Stats,
 }
 
@@ -26,14 +28,20 @@ export type Profile = {
 export type Snapshot = {
 	money: number,
 	prestige: number,
+	moneyMult: number, -- $ per honey right now (prestige x passes)
 	hives: { number },
 	highestTier: number,
 	shopTier: number,
 	shopBuys: number,
 	processorLevel: number,
+	processorRate: number,
+	upgradeCost: number,
 	queuedHoney: number,
 	padHoney: number,
+	carriedHoney: number,
 	canMerge: boolean,
+	wallFull: boolean,
+	nextPrestige: { tier: number, price: number, ready: boolean },
 	passes: { [string]: boolean },
 }
 

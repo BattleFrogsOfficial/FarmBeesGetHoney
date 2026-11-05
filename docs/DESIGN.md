@@ -194,6 +194,8 @@ Profile = {
 
 Jars in flight on the belt are not saved; on leave they are counted straight into padHoney. Gamepass ownership is never stored. Any field missing on load takes its default so later versions can add fields without a migration.
 
+> **2026-11-05 (owner):** the game was built in one step (milestones 2–5 together) with a bare-bones HUD so it can be restyled later. Small additions the doc didn't spell out: you spawn on your own plot (the hub spawn is a fallback); Buy pads keep buying every 0.5 s while you stand on them; prestige also clears honey anywhere in the loop (pad, carried, queued, on the belt); the profile gained `carriedHoney` and `receipts`.
+
 ## Build plan
 
 The game is built in Claude Code sessions against the repo, reusing the Rojo-based tool setup from mutant-farm, and ships in five milestones with the economy script checked in first.

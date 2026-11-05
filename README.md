@@ -25,7 +25,7 @@ You need **Git**, **Rokit**, **Roblox Studio** and the **Rojo Studio plugin**.
 1. Get the latest: in the `FarmBeesGetHoney` folder run `git pull`, then `rokit install` (only does something if a tool version changed).
 2. Start syncing: `rojo serve`
 3. Open Studio on a new **Baseplate** place, open the Rojo plugin and click **Connect**. The scripts appear in ReplicatedStorage, ServerScriptService and StarterPlayerScripts.
-4. Press **Play**.
+4. Press **Play**. You spawn on your own plot facing the hive wall. Step on **BUY 1** (blue pad), press **E** at the wall to merge three of a kind, pick up honey on the yellow pad at the end of the conveyor, hand it in at the orange pad by the beekeeper, upgrade the processor on the green pad, and prestige on the purple pad.
 
 To get a place file instead of live sync: `rojo build -o FarmBeesGetHoney.rbxl` and open it in Studio. CI also builds one on every push (GitHub → Actions → the latest run → Artifacts → FarmBeesGetHoney-place).
 

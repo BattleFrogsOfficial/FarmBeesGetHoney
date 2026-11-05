@@ -10,6 +10,13 @@ Remotes.init()
 local Services = script.Parent.Services
 local order = {
 	require(Services.DataService),
+	require(Services.PlotService),
+	require(Services.HiveService),
+	require(Services.HoneyService),
+	require(Services.ProcessorService),
+	require(Services.PrestigeService),
+	require(Services.MonetizationService),
+	require(Services.LeaderboardService),
 }
 
 for _, service in order do

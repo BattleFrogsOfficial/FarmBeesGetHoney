@@ -12,6 +12,9 @@ local Remotes = require(ReplicatedStorage.Shared.Remotes)
 local Signal = require(ReplicatedStorage.Shared.Signal)
 local Economy = require(ReplicatedStorage.Shared.Economy)
 local Merge = require(ReplicatedStorage.Shared.Merge)
+local Perks = require(ReplicatedStorage.Shared.Perks)
+local Prestige = require(ReplicatedStorage.Shared.Prestige)
+local Wall = require(ReplicatedStorage.Shared.Wall)
 local EconomyConfig = require(ReplicatedStorage.Shared.Config.Economy)
 local GameConfig = require(ReplicatedStorage.Shared.Config.Game)
 local Types = require(ReplicatedStorage.Shared.Types)
@@ -32,6 +35,8 @@ local TEMPLATE: Types.Profile = {
 	processorLevel = 1,
 	queuedHoney = 0,
 	padHoney = 0,
+	carriedHoney = 0, -- added 2026-11-05: honey picked up, not yet handed in
+	receipts = {}, -- added 2026-11-05: developer product PurchaseIds already granted
 	stats = { lifetimeHoney = 0, lifetimeMoney = 0, jarsMade = 0, merges = 0, bestVariant = "" },
 }
 
@@ -63,20 +68,59 @@ function DataService.changed(player: Player)
 	dirty[player] = true
 end
 
+function DataService.owned(player: Player): { [string]: boolean }
+	return DataService.passes[player] or {}
+end
+
 local function snapshot(player: Player, data: Types.Profile): Types.Snapshot
+	local status = Prestige.status(data)
 	return {
 		money = data.money,
 		prestige = data.prestige,
+		moneyMult = Perks.moneyPerHoney(data.prestige, DataService.owned(player)),
 		hives = data.hives,
 		highestTier = data.highestTier,
 		shopTier = Economy.shopTier(data.highestTier),
 		shopBuys = data.shopBuys,
 		processorLevel = data.processorLevel,
+		processorRate = Economy.processorRate(data.processorLevel),
+		upgradeCost = Economy.upgradeCost(data.processorLevel),
 		queuedHoney = data.queuedHoney,
 		padHoney = data.padHoney,
+		carriedHoney = data.carriedHoney,
 		canMerge = Merge.canMerge(data.hives),
-		passes = DataService.passes[player] or {},
+		wallFull = Wall.free(data.hives) == 0,
+		nextPrestige = { tier = status.tier, price = status.price, ready = status.ready },
+		passes = DataService.owned(player),
 	}
+end
+
+-- Saves now and waits (up to `timeout` s) for it to land. Used before telling Roblox a Robux
+-- purchase was granted.
+function DataService.saveNow(player: Player, timeout: number?): boolean
+	local profile = profiles[player]
+	if not profile or not profile:IsActive() then
+		return false
+	end
+	local saved = false
+	local connection = profile.OnAfterSave:Connect(function()
+		saved = true
+	end)
+	profile:Save()
+	local deadline = os.clock() + (timeout or 15)
+	while not saved and os.clock() < deadline and profile:IsActive() do
+		task.wait(0.1)
+	end
+	connection:Disconnect()
+	return saved and profiles[player] == profile
+end
+
+function DataService.players(): { [Player]: Types.Profile }
+	local out = {}
+	for player, profile in profiles do
+		out[player] = profile.Data
+	end
+	return out
 end
 
 local function finalize(player: Player, profile: any)
@@ -98,10 +142,10 @@ local function release(player: Player)
 		return
 	end
 	releasing[player] = true
+	finalize(player, profile) -- hooks still see the profile and passes
 	profiles[player] = nil
 	dirty[player] = nil
 	DataService.passes[player] = nil
-	finalize(player, profile)
 	profile:EndSession()
 	releasing[player] = nil
 end
