@@ -110,7 +110,7 @@ end
 function World.slotCFrame(plot: Plot, index: number): CFrame
 	local column, row = Wall.position(index)
 	local x = (column - 5.5) * Layout.slotSize
-	local y = 0.5 + (row - 0.5) * Layout.slotSize
+	local y = Layout.platform.height + (row - 0.5) * Layout.slotSize
 	return front(plot.cframe, x, y, Layout.wallZ)
 end
 
@@ -137,7 +137,7 @@ function World.isOnPlot(plot: Plot, position: Vector3): boolean
 	return math.abs(p.X) <= half and math.abs(p.Z) <= half and p.Y > -10 and p.Y < 80
 end
 
--- Column x of a wall slot (for dropping its jar onto the belt).
+-- Where a hive's jar appears: on the belt right in front of its column.
 function World.jarSpawn(plot: Plot, index: number): Vector3
 	local column = Wall.position(index)
 	local x = (column - 5.5) * Layout.slotSize
@@ -216,16 +216,9 @@ local function buildPlot(index: number, parent: Instance): Plot
 	)
 	model.PrimaryPart = ground
 
-	-- Hive wall backboard
-	local wallSize = Layout.slotSize * 10
-	block(
-		model,
-		"Backboard",
-		Vector3.new(wallSize + 1, wallSize + 1, 1),
-		P * CFrame.new(0, wallSize / 2 + 0.5, Layout.wallBackZ),
-		Visuals.backboard,
-		Enum.Material.WoodPlanks
-	)
+	-- Hive platform: the boxes stack on it (no wall behind them)
+	local pf = Layout.platform
+	span(model, "HivePlatform", P, pf.from, pf.to, 0, pf.height, Visuals.platform, Enum.Material.Concrete)
 	local promptPart =
 		block(model, "MergePrompt", Vector3.new(1, 1, 1), P * CFrame.new(Layout.promptPoint), Color3.new(1, 1, 1))
 	promptPart.Transparency = 1
@@ -240,13 +233,15 @@ local function buildPlot(index: number, parent: Instance): Plot
 	beltB.AssemblyLinearVelocity = -P.LookVector * Layout.beltSpeed
 	local railH, railT = 2.5, 0.5
 	local top = Layout.beltTop
-	local function rail(a: Vector3, b: Vector3)
-		local r = span(model, "BeltRail", P, a, b, top, railH, Visuals.beltRail, Enum.Material.Metal)
+	-- Belt A's rails stay low so the bottom row of hives shows over them.
+	local function rail(a: Vector3, b: Vector3, height: number?)
+		local r = span(model, "BeltRail", P, a, b, top, height or railH, Visuals.beltRail, Enum.Material.Metal)
 		r.Transparency = 0.3
 	end
-	rail(Vector3.new(A.from.X - railT, 0, A.from.Z - railT), Vector3.new(B.to.X + railT, 0, A.from.Z)) -- back
-	rail(Vector3.new(A.from.X, 0, A.to.Z), Vector3.new(A.to.X, 0, A.to.Z + railT)) -- front (wall side)
-	rail(Vector3.new(A.from.X - railT, 0, A.from.Z), Vector3.new(A.from.X, 0, A.to.Z + railT)) -- left end
+	local low = 1.5
+	rail(Vector3.new(A.from.X - railT, 0, A.from.Z - railT), Vector3.new(B.to.X + railT, 0, A.from.Z), low) -- hive side
+	rail(Vector3.new(A.from.X, 0, A.to.Z), Vector3.new(A.to.X, 0, A.to.Z + railT), low) -- player side
+	rail(Vector3.new(A.from.X - railT, 0, A.from.Z), Vector3.new(A.from.X, 0, A.to.Z + railT), low) -- left end
 	rail(Vector3.new(B.to.X, 0, B.from.Z), Vector3.new(B.to.X + railT, 0, B.to.Z)) -- outer side of B
 	rail(Vector3.new(B.from.X - railT, 0, A.to.Z), Vector3.new(B.from.X, 0, B.to.Z)) -- inner side of B
 	span(

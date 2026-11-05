@@ -118,27 +118,42 @@ for i, a in plots do
 	check(vb.Z > 1 and math.abs(vb.X) < 0.01, "belt B moves toward the front")
 end
 
--- Every tier's hive: bee within budget and inside its slot's footprint
+-- Every tier's hive: five panels + root, bee within budget and inside its box
 local plot = plots[1]
 for tier = 1, 12 do
 	local cf = World.slotCFrame(plot, 45)
 	local hive = HiveModel.build(tier, cf)
 	local bee = hive:FindFirstChildOfClass("Model")
 	local beeParts = parts(bee)
+	local hiveParts = parts(hive)
 	check(beeParts < 20, string.format("tier %d bee has %d parts", tier, beeParts))
-	local half = Layout.slotSize / 2
+	check(hiveParts <= 25, string.format("tier %d hive has %d parts", tier, hiveParts))
+	for _, name in { "Back", "Top", "Bottom", "Left", "Right" } do
+		check(hive:FindFirstChild(name) ~= nil, "hive panel " .. name)
+	end
+	check(hive:FindFirstChild("Front") == nil, "hive front is open")
+	local inner = (Layout.slotSize - 0.2) / 2 - HiveModel.WALL
 	for _, d in bee:GetDescendants() do
 		if d:IsA("BasePart") then
 			local p = cf:PointToObjectSpace(d.CFrame.Position)
-			local r = math.max(d.Size.X, d.Size.Y, d.Size.Z) / 2
+			local r = math.max(d.Size.X, d.Size.Y, d.Size.Z) / 2 * 0.5
 			check(
-				math.abs(p.X) + r * 0.6 <= half + 0.4 and math.abs(p.Y) + r * 0.6 <= half + 0.6,
-				string.format("tier %d bee part %s outside its slot (%.1f, %.1f)", tier, d.Name, p.X, p.Y)
+				math.abs(p.X) + r <= inner + 0.1
+					and math.abs(p.Y) + r <= inner + 0.1
+					and p.Z + r <= inner + 0.1
+					and p.Z > -(inner + 0.8),
+				string.format("tier %d bee part %s outside its box (%.2f, %.2f, %.2f)", tier, d.Name, p.X, p.Y, p.Z)
 			)
 			check(d.Anchored == false and d:FindFirstChildOfClass("WeldConstraint") ~= nil, "bee part welded")
 		end
 	end
-	print(string.format("tier %2d: hive %d parts", tier, parts(hive)))
+	print(string.format("tier %2d: hive %d parts (bee %d)", tier, hiveParts, beeParts))
+end
+
+-- Jars appear on belt A, in front of the hives (between the stack and the pads)
+for i = 1, 10 do
+	local p = World.toLocal(plot, World.jarSpawn(plot, i))
+	check(p.Z > Layout.wallZ + Layout.slotSize / 2, "jar spawns in front of the hives")
 end
 
 for tier = 1, 12 do

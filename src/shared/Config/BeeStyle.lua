@@ -1,6 +1,6 @@
 --!strict
 -- How each bee tier looks. BeeModel builds every bee from these primitives (under 20 parts each).
--- scale: overall size (a slot is 4.6 studs). abdomen: x/y/z size multipliers (rounder or slimmer).
+-- scale: overall size (the bee lives inside a 4.4-stud box; the smoke test checks it fits). abdomen: x/y/z size multipliers (rounder or slimmer).
 -- stripes: how many bands on the abdomen. extras: accessories BeeModel knows how to build:
 --   leaf hardhat tongue spikes armor cape crest crown glow
 
@@ -30,7 +30,7 @@ local EYE = rgb(15, 15, 18)
 
 local styles: { Style } = {
 	{ -- 1 Honey Bee: small, classic yellow and black
-		scale = 0.8,
+		scale = 0.75,
 		body = rgb(250, 200, 40),
 		stripe = BLACK,
 		stripes = 2,
@@ -45,7 +45,7 @@ local styles: { Style } = {
 		extras = {},
 	},
 	{ -- 2 Bumble Bee: round, fuzzy, bigger
-		scale = 0.95,
+		scale = 0.88,
 		body = rgb(245, 190, 40),
 		stripe = BLACK,
 		stripes = 3,
@@ -60,7 +60,7 @@ local styles: { Style } = {
 		extras = {},
 	},
 	{ -- 3 Carpenter Bee: glossy black, blue sheen
-		scale = 0.95,
+		scale = 0.88,
 		body = rgb(20, 22, 30),
 		stripe = rgb(40, 60, 120),
 		stripes = 1,
@@ -75,7 +75,7 @@ local styles: { Style } = {
 		extras = {},
 	},
 	{ -- 4 Mason Bee: metallic green
-		scale = 0.95,
+		scale = 0.88,
 		body = rgb(40, 150, 70),
 		stripe = rgb(20, 90, 40),
 		stripes = 2,
@@ -90,7 +90,7 @@ local styles: { Style } = {
 		extras = {},
 	},
 	{ -- 5 Sweat Bee: metallic teal, slim
-		scale = 0.92,
+		scale = 0.86,
 		body = rgb(30, 170, 170),
 		stripe = rgb(15, 100, 110),
 		stripes = 3,
@@ -105,7 +105,7 @@ local styles: { Style } = {
 		extras = {},
 	},
 	{ -- 6 Leafcutter Bee: carries a leaf
-		scale = 1.0,
+		scale = 0.92,
 		body = rgb(70, 60, 50),
 		stripe = rgb(220, 210, 180),
 		stripes = 3,
@@ -120,7 +120,7 @@ local styles: { Style } = {
 		extras = { "leaf" },
 	},
 	{ -- 7 Mining Bee: hard hat, dusty brown
-		scale = 1.02,
+		scale = 0.95,
 		body = rgb(150, 110, 75),
 		stripe = rgb(100, 70, 45),
 		stripes = 2,
@@ -135,7 +135,7 @@ local styles: { Style } = {
 		extras = { "hardhat" },
 	},
 	{ -- 8 Orchid Bee: iridescent purple
-		scale = 1.05,
+		scale = 0.97,
 		body = rgb(140, 70, 200),
 		stripe = rgb(60, 180, 160),
 		stripes = 2,
@@ -150,7 +150,7 @@ local styles: { Style } = {
 		extras = { "tongue" },
 	},
 	{ -- 9 Cuckoo Bee: red and black, spiky
-		scale = 1.05,
+		scale = 0.97,
 		body = rgb(200, 30, 30),
 		stripe = BLACK,
 		stripes = 2,
@@ -165,7 +165,7 @@ local styles: { Style } = {
 		extras = { "spikes" },
 	},
 	{ -- 10 Giant Bee: double size, armored
-		scale = 1.3,
+		scale = 1.12,
 		body = rgb(230, 170, 30),
 		stripe = BLACK,
 		stripes = 3,
@@ -180,7 +180,7 @@ local styles: { Style } = {
 		extras = { "armor" },
 	},
 	{ -- 11 Royal Bee: cape and crest
-		scale = 1.25,
+		scale = 1.08,
 		body = rgb(250, 210, 60),
 		stripe = rgb(60, 30, 90),
 		stripes = 2,
@@ -195,7 +195,7 @@ local styles: { Style } = {
 		extras = { "cape", "crest" },
 	},
 	{ -- 12 Queen Bee: crown, glow, largest
-		scale = 1.28,
+		scale = 1.15,
 		body = rgb(255, 205, 50),
 		stripe = rgb(120, 40, 20),
 		stripes = 3,

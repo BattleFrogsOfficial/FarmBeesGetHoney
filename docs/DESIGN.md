@@ -29,6 +29,8 @@ One full cycle of play, in the order the player experiences it:
 
 ## Hive wall
 
+> **2026-11-05 (owner):** there is no wall. The hives are a free-standing 10 x 10 stack of boxes on a platform at the back of the plot, **behind** the conveyor. Each box has five sides (back, top, bottom, left, right); the open front faces the conveyor and the bee lives inside. Jars appear on the belt in front of their hive's column. Fill order, merging and the 100-slot limit are unchanged; "wall" below means this stack.
+
 Each plot has a fixed 10 wide by 10 high wall of hive slots (100), not upgradable, starting empty.
 
 - Fill order: bottom row left to right, then the row above starting again at the far left, and so on up.
@@ -80,7 +82,7 @@ Presentation: hives lift, fly to a merge point in front of the wall, flash, and 
 
 ## Honey jars and conveyor
 
-Every hive drops one jar every 8 seconds onto the conveyor behind the wall; the jar is a physics cylinder (no corners, nothing jams) carrying a honey amount and an optional variant.
+Every hive drops one jar every 8 seconds onto the conveyor in front of it (behind the wall in the first draft); the jar is a physics cylinder (no corners, nothing jams) carrying a honey amount and an optional variant.
 
 - Honey amount = the hive tier's honey per jar (table above) x the variant multiplier.
 - Variants roll per jar at creation: Shiny 2% (x2), Golden 0.5% (x5), Rainbow 0.05% (x20), Quantum 0.005% (x100). One variant max per jar. Lucky Jars (gamepass) triples these odds.
