@@ -92,8 +92,18 @@ function harness.loader(env: { [string]: any }?, overrides: { [string]: any }?)
 	end
 end
 
--- harness.require("src/shared/Format") -> module (one shared cache for tests and the sim)
-harness.require = harness.loader()
+-- harness.require("src/shared/Format") -> module (one shared cache for tests and the sim).
+-- Roblox datatypes come from Lune's roblox library so config modules (Color3, Vector3...) load.
+local roblox = require("@lune/roblox")
+harness.require = harness.loader({
+	Color3 = roblox.Color3,
+	Vector3 = roblox.Vector3,
+	Vector2 = roblox.Vector2,
+	CFrame = roblox.CFrame,
+	UDim = roblox.UDim,
+	UDim2 = roblox.UDim2,
+	Enum = roblox.Enum,
+})
 
 -- A script path object, e.g. harness.script("@RS") stands in for ReplicatedStorage.
 function harness.script(path: string)

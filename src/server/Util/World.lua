@@ -25,7 +25,6 @@ export type Plot = {
 	flag: BasePart,
 	flagLabels: { TextLabel },
 	ownerLabel: TextLabel,
-	promptPart: BasePart,
 	beltA: BasePart,
 	beltB: BasePart,
 }
@@ -216,14 +215,22 @@ local function buildPlot(index: number, parent: Instance): Plot
 	)
 	model.PrimaryPart = ground
 
+	-- Fence round the edge, open in the middle of the front edge where the bridge arrives
+	local f = Layout.fence
+	local edge = size / 2 - f.thickness / 2
+	local function fence(a: Vector3, b: Vector3)
+		span(model, "Fence", P, a, b, 0, f.height, Visuals.fence, Enum.Material.WoodPlanks)
+	end
+	local t2 = f.thickness / 2
+	fence(Vector3.new(-size / 2, 0, -edge - t2), Vector3.new(size / 2, 0, -edge + t2)) -- back
+	fence(Vector3.new(-edge - t2, 0, -edge + t2), Vector3.new(-edge + t2, 0, edge + t2)) -- left
+	fence(Vector3.new(edge - t2, 0, -edge + t2), Vector3.new(edge + t2, 0, edge + t2)) -- right
+	fence(Vector3.new(-edge + t2, 0, edge - t2), Vector3.new(-f.gap / 2, 0, edge + t2)) -- front, left of the gap
+	fence(Vector3.new(f.gap / 2, 0, edge - t2), Vector3.new(edge - t2, 0, edge + t2)) -- front, right of the gap
+
 	-- Hive platform: the boxes stack on it (no wall behind them)
 	local pf = Layout.platform
 	span(model, "HivePlatform", P, pf.from, pf.to, 0, pf.height, Visuals.platform, Enum.Material.Concrete)
-	local promptPart =
-		block(model, "MergePrompt", Vector3.new(1, 1, 1), P * CFrame.new(Layout.promptPoint), Color3.new(1, 1, 1))
-	promptPart.Transparency = 1
-	promptPart.CanCollide = false
-	promptPart.CanQuery = false
 
 	-- Conveyor
 	local A, B = Layout.beltA, Layout.beltB
@@ -231,14 +238,14 @@ local function buildPlot(index: number, parent: Instance): Plot
 	beltA.AssemblyLinearVelocity = P.RightVector * Layout.beltSpeed
 	local beltB = span(model, "BeltB", P, B.from, B.to, 0, Layout.beltTop, Visuals.belt)
 	beltB.AssemblyLinearVelocity = -P.LookVector * Layout.beltSpeed
-	local railH, railT = 2.5, 0.5
+	local railH, railT = 2.5, 0.5 -- belt B's rails (segment A's are Layout.beltRail, under the hive platform)
 	local top = Layout.beltTop
 	-- Belt A's rails stay low so the bottom row of hives shows over them.
 	local function rail(a: Vector3, b: Vector3, height: number?)
 		local r = span(model, "BeltRail", P, a, b, top, height or railH, Visuals.beltRail, Enum.Material.Metal)
 		r.Transparency = 0.3
 	end
-	local low = 1.5
+	local low = Layout.beltRail
 	rail(Vector3.new(A.from.X - railT, 0, A.from.Z - railT), Vector3.new(B.to.X + railT, 0, A.from.Z), low) -- hive side
 	rail(Vector3.new(A.from.X, 0, A.to.Z), Vector3.new(A.to.X, 0, A.to.Z + railT), low) -- player side
 	rail(Vector3.new(A.from.X - railT, 0, A.from.Z), Vector3.new(A.from.X, 0, A.to.Z + railT), low) -- left end
@@ -259,6 +266,7 @@ local function buildPlot(index: number, parent: Instance): Plot
 	-- Pads
 	local pads: { [string]: Pad } = {}
 	local padTitles = {
+		Merge = "MERGE",
 		Buy1 = "BUY 1",
 		Buy5 = "BUY 5",
 		Buy25 = "BUY 25",
@@ -279,8 +287,8 @@ local function buildPlot(index: number, parent: Instance): Plot
 		local board = block(
 			model,
 			"PadSign_" .. name,
-			Vector3.new(Layout.padSize, 3, 0.3),
-			front(P, c.X, 5.2, c.Z - Layout.padSize / 2 - 0.4),
+			Vector3.new(Layout.padSize, Layout.padSignHeight, 0.3),
+			front(P, c.X, Layout.padSignHeight / 2 + 0.2, c.Z - Layout.padSize / 2 - 0.4),
 			Visuals.signBoard
 		)
 		board.CanCollide = false
@@ -293,7 +301,7 @@ local function buildPlot(index: number, parent: Instance): Plot
 		model,
 		"PickupCounter",
 		Vector3.new(9, 2, 0.3),
-		front(P, Layout.pads.Pickup.X, 8.6, Layout.pads.Pickup.Z - Layout.padSize / 2 - 0.4),
+		front(P, Layout.pads.Pickup.X, Layout.padSignHeight + 1.6, Layout.pads.Pickup.Z - Layout.padSize / 2 - 0.4),
 		"Honey: 0 — walk here"
 	)
 
@@ -424,7 +432,6 @@ local function buildPlot(index: number, parent: Instance): Plot
 		flag = flag,
 		flagLabels = flagLabels,
 		ownerLabel = ownerLabel,
-		promptPart = promptPart,
 		beltA = beltA,
 		beltB = beltB,
 	}

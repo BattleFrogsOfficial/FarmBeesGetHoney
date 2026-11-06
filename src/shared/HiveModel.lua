@@ -1,16 +1,22 @@
 --!strict
 -- A hive: a five-sided box (back, top, bottom, left, right; the front is open and faces the
--- conveyor) with its bee living inside, and the tier number on the back wall. An invisible
--- anchored root at the box center carries everything (welded), so tweens only move the root.
+-- conveyor) with floating text: the bee type in its color ("Basic" ... "Queen Bee") over a white
+-- "Level N". An invisible anchored root at the box center carries the panels (welded), so tweens
+-- only move the root. The bee itself is built and flown by each client (BeeController), so the
+-- server replicates 6 parts per hive.
 
-local BeeModel = require(script.Parent.BeeModel)
-local Styles = require(script.Parent.Config.BeeStyle)
+local Bees = require(script.Parent.Config.Bees)
 local Visuals = require(script.Parent.Config.Visuals)
 local Layout = require(script.Parent.Config.Layout)
+local GameConfig = require(script.Parent.Config.Game)
 
 local HiveModel = {}
 
 HiveModel.WALL = 0.25 -- panel thickness
+
+function HiveModel.inner(): number
+	return (Layout.slotSize - 0.2) / 2 - HiveModel.WALL
+end
 
 local function panel(model: Model, root: BasePart, name: string, size: Vector3, cf: CFrame, tier: number): Part
 	local p = Instance.new("Part")
@@ -29,6 +35,21 @@ local function panel(model: Model, root: BasePart, name: string, size: Vector3, 
 	weld.Parent = p
 	p.Parent = model
 	return p
+end
+
+local function text(parent: Instance, y: number, height: number, value: string, color: Color3): TextLabel
+	local l = Instance.new("TextLabel")
+	l.BackgroundTransparency = 1
+	l.Position = UDim2.fromScale(0, y)
+	l.Size = UDim2.fromScale(1, height)
+	l.Font = Enum.Font.GothamBold
+	l.TextScaled = true
+	l.TextColor3 = color
+	l.TextStrokeTransparency = 0.2
+	l.TextStrokeColor3 = Color3.new(0, 0, 0)
+	l.Text = value
+	l.Parent = parent
+	return l
 end
 
 -- `cf` is the box center, facing out of the open side (LookVector toward the conveyor).
@@ -53,39 +74,24 @@ function HiveModel.build(tier: number, cf: CFrame): Model
 	model.PrimaryPart = root
 
 	-- In `cf`'s frame the open front is -z (LookVector); the back panel is at +z.
-	local back = panel(model, root, "Back", Vector3.new(size, size, t), cf * CFrame.new(0, 0, half - t / 2), tier)
+	panel(model, root, "Back", Vector3.new(size, size, t), cf * CFrame.new(0, 0, half - t / 2), tier)
 	panel(model, root, "Top", Vector3.new(size, t, size), cf * CFrame.new(0, half - t / 2, 0), tier)
 	panel(model, root, "Bottom", Vector3.new(size, t, size), cf * CFrame.new(0, -half + t / 2, 0), tier)
 	panel(model, root, "Left", Vector3.new(t, size - 2 * t, size), cf * CFrame.new(-half + t / 2, 0, 0), tier)
 	panel(model, root, "Right", Vector3.new(t, size - 2 * t, size), cf * CFrame.new(half - t / 2, 0, 0), tier)
 
-	-- Tier number on the inside of the back wall, top-left (seen through the open front).
-	local gui = Instance.new("SurfaceGui")
-	gui.Face = Enum.NormalId.Front
-	gui.CanvasSize = Vector2.new(100, 100)
+	-- Floating text inside the box, toward its top: bee type (colored) over "Level N" (white).
+	local bee = Bees.list[tier]
+	local gui = Instance.new("BillboardGui")
+	gui.Name = "Label"
+	gui.Size = UDim2.fromScale(size * 0.9, size * 0.32)
+	gui.StudsOffsetWorldSpace = Vector3.new(0, half * 0.55, 0)
 	gui.LightInfluence = 0
-	local label = Instance.new("TextLabel")
-	label.BackgroundTransparency = 1
-	label.Size = UDim2.fromOffset(30, 26)
-	label.Position = UDim2.fromOffset(6, 6)
-	label.Font = Enum.Font.GothamBold
-	label.TextScaled = true
-	label.TextColor3 = Color3.new(1, 1, 1)
-	label.TextStrokeTransparency = 0.3
-	label.Text = tostring(tier)
-	label.Parent = gui
-	gui.Parent = back -- the back panel's Front face looks into the box, out through the opening
-
-	-- The bee lives inside, turned side-on so you see its profile, centered on its body length.
-	local s = Styles[tier].scale
-	local floor = -half + t
-	local beeOrigin = cf
-		* CFrame.new(0, floor + 0.75 * s + 0.15, 0.2)
-		* CFrame.Angles(0, math.rad(-72), 0)
-		* CFrame.new(0, 0, -0.5 * s)
-	local bee = BeeModel.build(tier, beeOrigin)
-	BeeModel.weldTo(bee, root)
-	bee.Parent = model
+	gui.MaxDistance = GameConfig.hiveLabelDistance
+	gui.AlwaysOnTop = false
+	text(gui, 0, 0.55, bee.label, bee.color)
+	text(gui, 0.55, 0.45, "Level " .. tier, Color3.new(1, 1, 1))
+	gui.Parent = root
 	return model
 end
 

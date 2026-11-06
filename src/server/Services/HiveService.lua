@@ -1,5 +1,5 @@
 --!strict
--- The hive wall: Buy pads, merging (E prompt / Merge intent / Auto Merge), Auto Buy, and the hive
+-- The hive stack: Buy pads, merging (the Merge pad / Auto Merge), Auto Buy, and the hive
 -- models with their drop-in and merge animations. Also owns each hive's jar timer.
 
 local Players = game:GetService("Players")
@@ -132,7 +132,7 @@ function HiveService.buy(player: Player, data: Types.Profile, n: number, quiet: 
 	if reason ~= "ok" then
 		if not quiet then
 			if reason == "full" then
-				Net.notify(player, "Wall full — press E to merge")
+				Net.notify(player, "Wall full — step on Merge")
 			elseif reason == "room" then
 				Net.notify(player, string.format("Only room for %d more", Wall.free(data.hives)))
 			else
@@ -241,9 +241,10 @@ function HiveService.Start()
 			HiveService.buy(player, data, n, again)
 		end, GameConfig.buyRepeatSeconds)
 	end
-	Net.on("Merge", function(player, data)
+	-- Merge pad: merges when something can merge; standing there does nothing otherwise.
+	PlotService.onPad("Merge", function(player, data)
 		HiveService.merge(player, data)
-	end)
+	end, GameConfig.mergeRepeatSeconds)
 
 	-- Auto Merge and Auto Buy passes
 	task.spawn(function()

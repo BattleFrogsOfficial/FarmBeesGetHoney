@@ -1,72 +1,27 @@
 --!strict
--- Client-side plot touches: the E merge prompt on your wall ("Not your plot" on others), the
--- wide view of your wall while you stand on a Buy pad, and the beekeepers' idle animations.
+-- Client-side plot touches: the wide view of your hives while you stand on a Buy pad, and the
+-- beekeepers' idle animations. (Merging is the Merge pad, handled by the server.)
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 local TweenService = game:GetService("TweenService")
 
-local Remotes = require(ReplicatedStorage.Shared.Remotes)
 local Layout = require(ReplicatedStorage.Shared.Config.Layout)
-local StateController = require(script.Parent.StateController)
 
 local PlotController = {}
 
 local player = Players.LocalPlayer :: Player
-local prompts: { [Model]: ProximityPrompt } = {}
-local merging = false
+local plots: { Model } = {}
 
 local function isMine(plot: Model): boolean
 	return plot:GetAttribute("OwnerUserId") == player.UserId
 end
 
-local function refreshPrompts()
-	local snap = StateController.snapshot
-	for plot, prompt in prompts do
-		if isMine(plot) then
-			prompt.ActionText = "Merge hives"
-			prompt.ObjectText = "Your wall"
-			prompt.Enabled = snap ~= nil and snap.canMerge and not merging
-		else
-			prompt.ActionText = "Not your plot"
-			prompt.ObjectText = ""
-			prompt.Enabled = (plot:GetAttribute("OwnerUserId") or 0) ~= 0
-		end
-	end
-end
-
-local function addPrompt(plot: Model)
-	local part = plot:WaitForChild("MergePrompt", 10) :: BasePart?
-	if not part then
-		return
-	end
-	local prompt = Instance.new("ProximityPrompt")
-	prompt.KeyboardKeyCode = Enum.KeyCode.E
-	prompt.HoldDuration = 0
-	prompt.MaxActivationDistance = Layout.promptDistance
-	prompt.RequiresLineOfSight = false
-	prompt.Triggered:Connect(function()
-		if isMine(plot) and not merging then
-			merging = true
-			refreshPrompts()
-			Remotes.get("Merge"):FireServer()
-			task.delay(1.5, function()
-				merging = false
-				refreshPrompts()
-			end)
-		end
-	end)
-	prompt.Parent = part
-	prompts[plot] = prompt
-	plot:GetAttributeChangedSignal("OwnerUserId"):Connect(refreshPrompts)
-	refreshPrompts()
-end
-
 -- Wide wall view on a Buy pad
 local viewing = false
 local function myPlot(): Model?
-	for plot in prompts do
+	for _, plot in plots do
 		if isMine(plot) then
 			return plot
 		end
@@ -186,7 +141,7 @@ function PlotController.Start()
 	local map = workspace:WaitForChild("Map")
 	local function watch(child: Instance)
 		if child:IsA("Model") and string.sub(child.Name, 1, 4) == "Plot" then
-			task.spawn(addPrompt, child)
+			table.insert(plots, child)
 			task.spawn(function()
 				local npc = child:WaitForChild("Beekeeper", 10)
 				if npc and npc:IsA("Model") then
@@ -199,7 +154,6 @@ function PlotController.Start()
 		watch(child)
 	end
 	map.ChildAdded:Connect(watch)
-	StateController.Changed:Connect(refreshPrompts)
 	RunService.Heartbeat:Connect(updateCamera)
 end
 

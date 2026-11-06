@@ -11,6 +11,7 @@ return {
 	autoBuySeconds = 5, -- Auto Buy pass
 	mergeAnimationMax = 1.5, -- seconds; the whole merge presentation fits in this
 	padCheckInterval = 0.1, -- how often the server checks who stands on which pad
+	mergeRepeatSeconds = 1.6, -- the Merge pad tries again this often while you stand on it (after an animation)
 	buyRepeatSeconds = 0.5, -- Buy pads buy again every this many seconds while you stand on them
 	honeyTick = 0.1, -- jar spawning / belt checks
 	processorTick = 0.25,
@@ -18,6 +19,8 @@ return {
 	jarMaxAge = 30, -- a jar stuck this long is counted and removed
 	leaderboardSeconds = 120,
 	leaderboardSize = 10,
+	beeAnimateDistance = 160, -- bees further than this from the camera hold still (client)
+	hiveLabelDistance = 90, -- the floating "Basic / Level 1" text shows within this distance
 	dropSeconds = 0.35, -- a bought hive's fall into its slot
 	studioPasses = false, -- true: Studio sessions keep the passes you own (otherwise Studio tests the free game)
 }

@@ -74,15 +74,65 @@ check(#plots == 6, "six plots")
 check(hub.leaderboard ~= nil, "hub leaderboard")
 print(string.format("map: %d parts", parts(workspace.Map)))
 
--- Plots don't overlap each other or the hub.
+-- Two plot squares (rotated) are apart if some edge normal separates them by `gap` (SAT in 2D).
+local function corners(cf)
+	local h = Layout.plotSize / 2
+	local out = {}
+	for _, c in { { -h, -h }, { h, -h }, { h, h }, { -h, h } } do
+		local w = cf:PointToWorldSpace(roblox.Vector3.new(c[1], 0, c[2]))
+		table.insert(out, { w.X, w.Z })
+	end
+	return out
+end
+local function separated(a, b, gap)
+	for _, poly in { a, b } do
+		for i = 1, 4 do
+			local p, q = poly[i], poly[i % 4 + 1]
+			local nx, nz = -(q[2] - p[2]), q[1] - p[1]
+			local len = math.sqrt(nx * nx + nz * nz)
+			nx, nz = nx / len, nz / len
+			local amin, amax, bmin, bmax = math.huge, -math.huge, math.huge, -math.huge
+			for _, c in a do
+				local d = c[1] * nx + c[2] * nz
+				amin, amax = math.min(amin, d), math.max(amax, d)
+			end
+			for _, c in b do
+				local d = c[1] * nx + c[2] * nz
+				bmin, bmax = math.min(bmin, d), math.max(bmax, d)
+			end
+			if amax + gap <= bmin or bmax + gap <= amin then
+				return true
+			end
+		end
+	end
+	return false
+end
+
+-- Plots don't overlap each other (at least 10 studs apart) or the hub.
 for i, a in plots do
 	local pa = a.cframe.Position
 	check(pa.Magnitude - Layout.plotSize / 2 > Layout.hubRadius + 10, "plot " .. i .. " clear of the hub")
 	for j, b in plots do
 		if i < j then
-			check((pa - b.cframe.Position).Magnitude > Layout.plotSize * 1.1, "plots " .. i .. "/" .. j .. " apart")
+			check(separated(corners(a.cframe), corners(b.cframe), 10), "plots " .. i .. "/" .. j .. " overlap or touch")
 		end
 	end
+	-- Fence: four sides, the front open where the bridge arrives
+	local fences = {}
+	for _, d in a.model:GetChildren() do
+		if d.Name == "Fence" then
+			table.insert(fences, d)
+		end
+	end
+	check(#fences == 5, "plot " .. i .. " has 5 fence pieces")
+	for _, fpart in fences do
+		local p = World.toLocal(a, fpart.CFrame.Position)
+		local onFront = p.Z > Layout.plotSize / 2 - 2
+		if onFront then
+			check(math.abs(p.X) - fpart.Size.X / 2 >= Layout.fence.gap / 2 - 0.01, "fence leaves the bridge gap")
+		end
+	end
+	check(Layout.fence.gap > Layout.bridgeWidth, "the gap is wider than the bridge")
 	-- Every pad inside the plot, none overlapping another
 	local names = {}
 	for name, pad in a.pads do
@@ -118,37 +168,59 @@ for i, a in plots do
 	check(vb.Z > 1 and math.abs(vb.X) < 0.01, "belt B moves toward the front")
 end
 
--- Every tier's hive: five panels + root, bee within budget and inside its box
+-- Every tier's hive: five panels + root (the bee is client-side), and the bee fits its box at
+-- every point of its flight.
+local BeeModel = requireModule(RS.Shared.BeeModel)
+local BeeFlight = requireModule(RS.Shared.BeeFlight)
+local Styles = requireModule(RS.Shared.Config.BeeStyle)
 local plot = plots[1]
+local inner = HiveModel.inner()
 for tier = 1, 12 do
 	local cf = World.slotCFrame(plot, 45)
 	local hive = HiveModel.build(tier, cf)
-	local bee = hive:FindFirstChildOfClass("Model")
-	local beeParts = parts(bee)
 	local hiveParts = parts(hive)
-	check(beeParts < 20, string.format("tier %d bee has %d parts", tier, beeParts))
-	check(hiveParts <= 25, string.format("tier %d hive has %d parts", tier, hiveParts))
+	check(hiveParts == 6, string.format("tier %d hive has %d parts", tier, hiveParts))
 	for _, name in { "Back", "Top", "Bottom", "Left", "Right" } do
 		check(hive:FindFirstChild(name) ~= nil, "hive panel " .. name)
 	end
 	check(hive:FindFirstChild("Front") == nil, "hive front is open")
-	local inner = (Layout.slotSize - 0.2) / 2 - HiveModel.WALL
+	check(hive.PrimaryPart:FindFirstChild("Label") ~= nil, "hive label")
+	local bee = BeeModel.build(tier, roblox.CFrame.new())
+	local beeParts = parts(bee)
+	check(beeParts < 20, string.format("tier %d bee has %d parts", tier, beeParts))
+	-- The real bee's extents stay within BeeFlight's assumed reach (so the wander test holds).
+	local s = Styles[tier].scale
 	for _, d in bee:GetDescendants() do
 		if d:IsA("BasePart") then
-			local p = cf:PointToObjectSpace(d.CFrame.Position)
+			local p = d.CFrame.Position
 			local r = math.max(d.Size.X, d.Size.Y, d.Size.Z) / 2 * 0.5
+			local horizontal = math.max(math.abs(p.X), math.abs(p.Z)) + r
 			check(
-				math.abs(p.X) + r <= inner + 0.1
-					and math.abs(p.Y) + r <= inner + 0.1
-					and p.Z + r <= inner + 0.1
-					and p.Z > -(inner + 0.8),
-				string.format("tier %d bee part %s outside its box (%.2f, %.2f, %.2f)", tier, d.Name, p.X, p.Y, p.Z)
+				horizontal <= BeeFlight.HALF_LENGTH * s + 0.05,
+				string.format("tier %d %s reaches %.2f past HALF_LENGTH", tier, d.Name, horizontal)
 			)
-			check(d.Anchored == false and d:FindFirstChildOfClass("WeldConstraint") ~= nil, "bee part welded")
+			check(
+				math.abs(p.Y) + r <= BeeFlight.HALF_HEIGHT * s + 0.25,
+				string.format("tier %d %s too tall (%.2f)", tier, d.Name, math.abs(p.Y) + r)
+			)
 		end
 	end
-	print(string.format("tier %2d: hive %d parts (bee %d)", tier, hiveParts, beeParts))
+	local range = BeeFlight.range(s, inner)
+	check(range.x > 0.3 and range.y > 0.3, "tier " .. tier .. " has room to fly")
+	print(
+		string.format(
+			"tier %2d: hive %d parts, bee %d parts, flies +-%.1f x +-%.1f",
+			tier,
+			hiveParts,
+			beeParts,
+			range.x,
+			range.y
+		)
+	)
 end
+-- The hive platform is higher than belt A's rails, so the bottom row is never hidden.
+check(Layout.platform.height > Layout.beltTop + Layout.beltRail, "hive platform above the belt rails")
+check(Layout.pads.Merge ~= nil, "merge pad")
 
 -- Jars appear on belt A, in front of the hives (between the stack and the pads)
 for i = 1, 10 do

@@ -9,9 +9,7 @@ local RunService = game:GetService("RunService")
 local Remotes = {}
 
 -- client -> server
-Remotes.ClientToServer = {
-	"Merge", -- () press E near your own hive wall
-}
+Remotes.ClientToServer = {} :: { string } -- none yet: every action is a step-on pad
 
 -- server -> client
 Remotes.ServerToClient = {

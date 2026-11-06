@@ -12,6 +12,7 @@ local order = {
 	require(Controllers.HudController),
 	require(Controllers.ShopController),
 	require(Controllers.PlotController),
+	require(Controllers.BeeController),
 }
 
 for _, controller in order do
