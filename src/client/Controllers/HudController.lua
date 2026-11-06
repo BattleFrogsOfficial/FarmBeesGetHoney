@@ -54,7 +54,7 @@ local function render(s: Types.Snapshot)
 		if top then top.name else "none",
 		s.processorLevel,
 		Format.number(s.processorRate),
-		if s.wallFull then "   WALL FULL: press E" else ""
+		if s.wallFull then "   WALL FULL: step on Merge" else ""
 	)
 end
 

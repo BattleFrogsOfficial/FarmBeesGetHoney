@@ -7,6 +7,7 @@ return {
 	bridge = Color3.fromRGB(150, 110, 70),
 	rail = Color3.fromRGB(110, 80, 50),
 	platform = Color3.fromRGB(150, 140, 125),
+	fence = Color3.fromRGB(150, 105, 60),
 	belt = Color3.fromRGB(45, 45, 50),
 	beltRail = Color3.fromRGB(90, 90, 96),
 
@@ -14,6 +15,7 @@ return {
 		Buy1 = Color3.fromRGB(70, 160, 230),
 		Buy5 = Color3.fromRGB(70, 160, 230),
 		Buy25 = Color3.fromRGB(70, 160, 230),
+		Merge = Color3.fromRGB(240, 120, 40),
 		Pickup = Color3.fromRGB(240, 180, 40),
 		Sell = Color3.fromRGB(240, 140, 40),
 		Upgrade = Color3.fromRGB(120, 200, 90),

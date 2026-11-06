@@ -31,6 +31,8 @@ One full cycle of play, in the order the player experiences it:
 
 > **2026-11-05 (owner):** there is no wall. The hives are a free-standing 10 x 10 stack of boxes on a platform at the back of the plot, **behind** the conveyor. Each box has five sides (back, top, bottom, left, right); the open front faces the conveyor and the bee lives inside. Jars appear on the belt in front of their hive's column. Fill order, merging and the 100-slot limit are unchanged; "wall" below means this stack.
 
+> **2026-11-06 (owner):** the platform is raised above the conveyor so nothing hides the bees; boxes are bigger (6 studs) and bees smaller, and **bees fly around inside their box**. Each box shows floating text like Beaver Farm: the bee type in its color ("Basic" for Tier 1, then "Bumble Bee" ... "Queen Bee") over "Level N" in white. Buy 1 / 5 / 25 sit right in front of the conveyor, with a fourth **Merge** pad beside them that replaces pressing E: standing on it merges when a merge is possible and does nothing otherwise. Plots moved further out (no overlap) and each has a fence with an opening at its bridge.
+
 Each plot has a fixed 10 wide by 10 high wall of hive slots (100), not upgradable, starting empty.
 
 - Fill order: bottom row left to right, then the row above starting again at the far left, and so on up.

@@ -68,8 +68,15 @@ end
 for _ = 1, 16 do
 	table.insert(hives, 1)
 end
+local BeeFlightP = requireModule(RS.Shared.BeeFlight)
+local BeeModelP = requireModule(RS.Shared.BeeModel)
+local StylesP = requireModule(RS.Shared.Config.BeeStyle)
 for i, tier in hives do
-	HiveModel.build(tier, World.slotCFrame(plot, i)).Parent = plot.hives
+	local cf = World.slotCFrame(plot, i)
+	HiveModel.build(tier, cf).Parent = plot.hives
+	-- The bee where the client would fly it at t = 3 (clients build bees; the server doesn't).
+	local x, y, z, yaw = BeeFlightP.at(3, i * 1.37 + tier, BeeFlightP.range(StylesP[tier].scale, HiveModel.inner()))
+	BeeModelP.build(tier, cf * roblox.CFrame.new(x, y, z) * roblox.CFrame.Angles(0, yaw, 0)).Parent = plot.hives
 end
 -- Jars along the belt: every band and variant
 local variants = { "", "Shiny", "Golden", "Rainbow", "Quantum" }

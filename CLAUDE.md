@@ -6,7 +6,7 @@ Merge-and-conveyor idle game for Roblox. Luau, synced into Studio with Rojo. One
 
 ## The one rule: the server is authoritative
 
-- Clients send **intents only** (`src/shared/Remotes.lua`): only `Merge()` (the E prompt, which the client creates on your own wall). Never a price, amount, tier or timestamp. Pads (Buy 1/5/25, pickup, sell, upgrade, prestige) are step-on and detected by the server, so they have no remote.
+- Clients send **intents only** (`src/shared/Remotes.lua`); right now there are none: every action is a step-on pad (Buy 1/5/25, Merge, pickup, sell, upgrade, prestige) detected by the server. Never accept a price, amount, tier or timestamp from a client.
 - Every remote goes through `Net.on` (`src/server/Util/Net.lua`): rate limit (`Game.remoteCallsPerSecond`), loaded profile required; handlers validate every argument (`Util/Validate.lua`) and reject silently.
 - The shared rule modules decide (`Economy`, `Merge`, `Wall`, `Shop`, `Belt`, `Processor`, `Prestige`, `Perks`); services only wire them to the world. The client only previews.
 - **HUD/UI is bare-bones on purpose** (owner, 2026-11-05): plain frames and text built in `src/client/UI.lua` + the controllers, every size/color/position in `Config/Hud.lua`. World signs are SurfaceGuis built in `Util/World.lua`, colors in `Config/Visuals.lua`. Keep them easy to restyle; don't add polish yet.
@@ -38,7 +38,8 @@ src/shared/          ReplicatedStorage.Shared — pure modules, usable on both s
   Perks.lua          pass effects: moneyPerHoney, luck, jarInterval
   Wall.lua           10x10 slot layout (slot 1 bottom-left), free slots, room for a pad
   BeeModel.lua       builds any tier's bee from parts (Config/BeeStyle), < 20 parts, welds to a hive
-  HiveModel.lua      five-sided hive box, open front toward the belt (tier color, number) + its bee inside
+  HiveModel.lua      five-sided hive box, open front toward the belt, floating "Basic" / "Level 1" text (6 parts)
+  BeeFlight.lua      a bee's wander inside its box (pure math): range(scale, inner), at(t, seed, range)
   JarModel.lua       jar (physics cylinder + lid, tag/gem by tier band, variant tint + particles)
   Format.lua Remotes.lua Types.lua Signal.lua
 src/server/          ServerScriptService.Server
@@ -55,7 +56,8 @@ src/client/          StarterPlayerScripts.Client
   UI.lua             frame / text / button helpers (styling from Config/Hud)
   Controllers/       StateController (snapshot) HudController (stats, toast, SHOP button)
                      ShopController (pass + cash pack panel, hub board prompt)
-                     PlotController (E merge prompt, wall camera on Buy pads, beekeeper idles)
+                     PlotController (wall camera on Buy pads, beekeeper idles)
+                     BeeController (builds every hive's bee locally and flies it inside its box)
 Packages/            vendored ProfileStore 1.0.3
 rokit.toml           tool versions for the owner's computer
 tools/               econ_sim.py, check / test / harness / smoke (Lune), install-tools.sh
@@ -66,10 +68,10 @@ docs/DESIGN.md       the design doc     docs/HANDOFF.md   latest session handoff
 
 ## How the game runs (server)
 
-- **Map** (`World.build`, from `PlotService.Init`): the hub (spawn, pass-shop board, top-honey board) at the origin, 6 plots on a ring of radius 150 joined by bridges. Each plot is 120 x 120; plot-local +z points to the hub. A new Baseplate place's `Baseplate` / `SpawnLocation` are deleted first.
-- **Plots** are claimed per session (first free), spawn puts you on yours facing the wall. Pads are step-on: `PlotService` checks every root part every 0.1 s; entering a pad calls its handler once; Buy pads repeat every `Game.buyRepeatSeconds` (0.5) while you stand there. Someone else's pad says "Not your plot".
-- **Hives** (owner, 2026-11-05): no wall. A free-standing 10x10 stack of five-sided boxes (back, top, bottom, left, right) sits on a low platform at the back of the plot, open fronts facing the conveyor, each bee living inside its box. Belt A runs along the front of the stack; jars appear on it right in front of their column.
-- **Buy** (`Shop.buy`): hive boxes drop in with a bounce + dust. **Merge** (`Merge.plan`): consumed hives fly to the merge point (0.4 s), flash, then every hive tweens to its new slot (0.55 s): about 1 s total, under `Game.mergeAnimationMax`. Buys, jars and prestige wait while it runs. A hive is an invisible anchored root (tweened) with its five panels and bee welded to it: 17–24 parts.
+- **Map** (`World.build`, from `PlotService.Init`): the hub (spawn, pass-shop board, top-honey board) at the origin, 6 plots on a ring of radius 190 joined by bridges (150 overlapped at the corners; the smoke test checks the squares are 10+ studs apart). Each plot is 120 x 120 with a fence round it, open 18 studs where the bridge arrives; plot-local +z points to the hub. A new Baseplate place's `Baseplate` / `SpawnLocation` are deleted first.
+- **Plots** are claimed per session (first free), spawn puts you on yours facing the wall. Pads are step-on: `PlotService` checks every root part every 0.1 s; entering a pad calls its handler once; Buy pads repeat every `Game.buyRepeatSeconds` (0.5) and the Merge pad every `Game.mergeRepeatSeconds` (1.6) while you stand there. Buy 1 / 5 / 25 and Merge are a row right in front of the conveyor; pad signs are low (3 studs) so they never hide the hives. Someone else's pad says "Not your plot".
+- **Hives** (owner, 2026-11-05/06): no wall. A free-standing 10x10 stack of 6-stud five-sided boxes (back, top, bottom, left, right) sits on a 4.5-stud platform at the back of the plot (higher than belt A + its rails, so nothing hides the bottom row), open fronts facing the conveyor. Each box floats its bee type in color ("Basic", "Bumble Bee" ... "Queen Bee", `Config/Bees` label/color) over a white "Level N" (BillboardGui, within `Game.hiveLabelDistance`). **Bees are client-side**: `BeeController` builds each hive's bee locally and flies it around inside its box (`BeeFlight`, wings flapping), only within `Game.beeAnimateDistance` of the camera, with `BulkMoveTo`. Belt A runs along the front of the stack; jars appear on it right in front of their column.
+- **Buy** (`Shop.buy`): hive boxes drop in with a bounce + dust. **Merge** (the Merge pad, owner 2026-11-06: replaces the E prompt; does nothing when nothing can merge) (`Merge.plan`): consumed hives fly to the merge point (0.4 s), flash, then every hive tweens to its new slot (0.55 s): about 1 s total, under `Game.mergeAnimationMax`. Buys, jars and prestige wait while it runs. A hive is an invisible anchored root (tweened) with its five panels welded to it: 6 server parts (the bee is the client's, 11–18 parts).
 - **Jars** (`HoneyService`, every 0.1 s): each hive has a timer (`HiveService.timers`); due hives drop a jar onto belt A in front of their column unless 50 jars are live (`Belt.due`, longest-waiting first). The belt is two anchored parts with `AssemblyLinearVelocity` (14 studs/s): A along the front of the hive stack toward +x, B down the right side to the bin; a jar past `Layout.beltEndZ`, fallen off, or 30 s old is counted (pickup pad, or the queue with Auto Collect) and removed. Leaving counts the belt's jars into `padHoney`; prestige discards them.
 - **Processor** (`ProcessorService`, every 0.25 s): `Processor.step` at the level's rate x `Perks.moneyPerHoney`. Sell pad hands in carried honey; Upgrade pad buys one level per step-on.
 - **Prestige** pad: `Prestige.apply` resets money ($12), hives, highest tier, shop buys, processor level, and all honey in the loop (pad, carried, queued, belt); flag shows "P<n>", color every 5 (`Visuals.flagColors`).
@@ -116,11 +118,11 @@ lune run tools/preview/export -- build/FarmBeesGetHoney.rbxl build/scene.json &&
 (cd tools/preview && npm install)         # once, for the renderer (three.js); Chromium + Playwright are preinstalled in cloud sessions
 ```
 
-Preview cameras: `SHOTS='[["name",[eye],[target],fov]]'`. Plot 1 is centered at (150, 0, 0) with its hive stack toward +x, e.g. `["front",[128,14,0],[199,10,0],60]` (what a player on the pads sees). The renderer draws SurfaceGui text over the whole face (the hive numbers are really small corner labels).
+Preview cameras: `SHOTS='[["name",[eye],[target],fov]]'`. Plot 1 is centered at (190, 0, 0) with its hive stack toward +x, e.g. `["front",[196,16,0],[242,14,0],60]` (from the pads) or `["plot",[110,55,0],[215,10,0],60]`. The export places each bee where the client would fly it at t = 3; billboard labels aren't drawn. The renderer draws SurfaceGui text over the whole face (the hive numbers are really small corner labels).
 
 CI (`.github/workflows/ci.yml`): job `check` (cargo tools) runs check, test, stylua --check, selene, the sim, a rojo build and the world smoke test; job `rokit-build` installs from `rokit.toml`, runs the tests and uploads the built place as the `FarmBeesGetHoney-place` artifact. The owner works from a clone on their Desktop (`git pull`, `rojo serve`): push finished work to `main` (or merge its PR) so a pull picks it up.
 
 ## Status by milestone
 
 - **M1 Scaffold (2026-11-04): done.** Follow-up the same day: prestige price table (+10% per run), belt cap 50, `rokit.toml`, lint fix.
-- **M2–M5 (2026-11-05): built in one pass, not yet played in Studio.** One plot per player on a 6-plot map with hub and bridges; hive wall with Buy 1/5/25, drop-in, E merge with the fly-in/rebuild animation; jars with variants on a moving belt with the 50 cap; pickup pad, beekeeper (idle animations), processor + upgrade pad; prestige with flag; all six passes and three cash packs (ids still 0); leaderstats + top-honey board; bare-bones HUD and shop panel; the 12 bee models and the jar tier/variant looks. Checked headlessly (tests, smoke test, preview renders); the Studio list is in docs/HANDOFF.md.
+- **M2–M5 (2026-11-05): built in one pass, not yet played in Studio.** One plot per player on a 6-plot map with hub and bridges; hive wall with Buy 1/5/25, drop-in, Merge pad with the fly-in/rebuild animation; jars with variants on a moving belt with the 50 cap; pickup pad, beekeeper (idle animations), processor + upgrade pad; prestige with flag; all six passes and three cash packs (ids still 0); leaderstats + top-honey board; bare-bones HUD and shop panel; the 12 bee models and the jar tier/variant looks. Checked headlessly (tests, smoke test, preview renders); the Studio list is in docs/HANDOFF.md.

@@ -14,6 +14,7 @@ local Layout = require(ReplicatedStorage.Shared.Config.Layout)
 local Visuals = require(ReplicatedStorage.Shared.Config.Visuals)
 local Economy = require(ReplicatedStorage.Shared.Economy)
 local Format = require(ReplicatedStorage.Shared.Format)
+local Merge = require(ReplicatedStorage.Shared.Merge)
 local Prestige = require(ReplicatedStorage.Shared.Prestige)
 local Shop = require(ReplicatedStorage.Shared.Shop)
 local Signal = require(ReplicatedStorage.Shared.Signal)
@@ -60,13 +61,15 @@ function PlotService.refreshSigns(player: Player, data: Types.Profile)
 		local cost, reason = Shop.quote(data, n)
 		local tier = Economy.shopTier(data.highestTier)
 		if reason == "full" then
-			setPad(pad, "Wall full — press E to merge", false)
+			setPad(pad, "Wall full: step on Merge", false)
 		elseif reason == "room" then
 			setPad(pad, "Not enough room", false)
 		else
 			setPad(pad, string.format("Tier %d · %s", tier, Format.money(cost)), reason == "ok")
 		end
 	end
+	local canMerge = Merge.canMerge(data.hives)
+	setPad(plot.pads.Merge, if canMerge then "Ready: stand here" else "Need 3 of a kind", canMerge)
 	local upgrade = Economy.upgradeCost(data.processorLevel)
 	setPad(
 		plot.pads.Upgrade,
